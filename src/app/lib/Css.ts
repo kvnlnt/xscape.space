@@ -83,7 +83,10 @@ export const useCss = <T>(
       | `${Extract<keyof T, string>}_on_hover_on_desktop`
     )[]
   ) => {
-    return list.map((item) => `${item}_${id}`).join(' ');
+    return list
+      .filter((i) => i !== null)
+      .map((item) => `${item}_${id}`)
+      .join(' ');
   };
 
   const setter = (update: Partial<Record<keyof T, StyleDeclaration[]>>) => {

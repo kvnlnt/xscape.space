@@ -27,7 +27,7 @@ function HTML<T extends keyof HTMLElementTagNameMap>({ tag, attrs = [], children
   });
   children.forEach((child) => {
     if (child instanceof Node) el.appendChild(child);
-    if (typeof child === 'string') el.innerHTML += child;
+    if (typeof child === 'string' || typeof child === 'number') el.innerHTML += child;
   });
   return el;
 }
@@ -35,22 +35,29 @@ function HTML<T extends keyof HTMLElementTagNameMap>({ tag, attrs = [], children
 export function useHtml<T extends keyof HTMLElementTagNameMap>(
   tag: T,
   ...attrs: HtmlAttr<T>[]
-): [(...children: HtmlNode[]) => HTMLElement, HtmlTemplate, (...attrs: HtmlAttr<T>[]) => void] {
+): [(...children: HtmlNode[]) => HTMLElement, (...attrs: HtmlAttr<T>[]) => void] {
   let container: HTMLElement;
-  const element = (...children: HtmlNode[]) => {
-    container = HTML<T>({ tag, attrs, children });
-    return container;
-  };
+  let hasRendered = false;
+
   const replace = (...children: HtmlNode[]) => {
     const newContainer = HTML<T>({ tag, attrs, children });
     container.replaceWith(newContainer);
     container = newContainer;
+    return container;
   };
+
+  const element = (...children: HtmlNode[]) => {
+    if (hasRendered) return replace(...children);
+    container = HTML<T>({ tag, attrs, children });
+    hasRendered = true;
+    return container;
+  };
+
   const updateAttrs = (...attrs: HtmlAttr<T>[]) => {
     attrs.forEach((attr) => {
       const [key, val] = attr;
       container.setAttribute(key, val as string);
     });
   };
-  return [element, replace, updateAttrs];
+  return [element, updateAttrs];
 }

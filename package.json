@@ -1,50 +1,31 @@
 {
-  "name": "feds",
+  "name": "xscape",
   "version": "1.0.0",
-  "description": "A Clean Front End Design System",
+  "description": "Programming music by programmers for programmers programming programs",
   "main": "index.js",
   "scripts": {
     "build": "node tasks/build",
     "watch": "node tasks/build --watch",
     "lint": "eslint ./src --ext .ts",
-    "dev": "concurrently \"http-server ./public\" \"npm run watch\"",
-    "generate:page": "node tasks/generate-page",
-    "clean": "rm ./public/feds.js",
-    "publish": "aws s3 sync ./public s3://kevinlint.com/feds"
+    "dev": "concurrently \"npm run server\" \"npm run watch\"",
+    "clean": "rm ./public/app.js ./public/app.js.map",
+    "publish": "aws s3 sync ./public s3://kevinlint.com/xscape.space",
+    "server": "node tasks/server"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kvnlnt/feno.git"
+    "url": "git+https://github.com/kvnlnt/xscape.space.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/kvnlnt/feno/issues"
+    "url": "https://github.com/kvnlnt/xscape.space/issues"
   },
-  "homepage": "https://github.com/kvnlnt/feno#readme",
-  "dependencies": {
-    "@types/color": "^3.0.2"
-  },
+  "homepage": "https://github.com/kvnlnt/xscape.space#readme",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^4.22.1",
-    "@typescript-eslint/parser": "^4.22.1",
     "concurrently": "^6.2.1",
-    "esbuild": "^0.11.10",
-    "eslint": "^7.26.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^3.4.0",
-    "husky": "6.0.0",
-    "lint-staged": "11.0.0"
+    "esbuild": "^0.11.10"
   },
-  "lint-staged": {
-    "src/**/*.ts": [
-      "eslint --fix",
-      "git add"
-    ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "yarn lint-staged"
-    }
+  "dependencies": {
   }
 }

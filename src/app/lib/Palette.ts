@@ -1,5 +1,6 @@
 const Colors = {
   black: [0, 0, 5],
+  brown: [44, 11, 14],
   red: [0, 100, 50],
   blue: [240, 100, 50],
   yellow: [55, 100, 50],
