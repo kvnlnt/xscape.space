@@ -17,7 +17,7 @@ export const useFontFace = <T>(fontFamily: T, src: `url('${string}.ttf')` | `url
   const style = document.createElement('style');
   style.id = id;
   document.getElementsByTagName('head')[0].appendChild(style);
-  const render = () => (style.innerHTML = `@font-face { font-family: '${fontFamily}'; src: ${src};}`);
+  const render = () => (style.innerHTML = `@font-face {font-family:'${fontFamily}'; src: ${src};}`);
   render();
   return fontFamily;
 };

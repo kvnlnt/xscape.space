@@ -20,7 +20,7 @@ function uuid(str: string = 'xxxxxxxx') {
 
 type CssPropType = keyof CSSStyleDeclaration;
 type CssPropValType = string | number;
-type StyleDeclaration = [CssPropType, CssPropValType, boolean?];
+export type StyleDeclaration = [CssPropType, CssPropValType, boolean?];
 export const useCss = <T>(
   declarations: Record<keyof T, StyleDeclaration[]>,
 ): [
