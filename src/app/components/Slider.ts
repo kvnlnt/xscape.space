@@ -1,9 +1,11 @@
 import { useCss } from '../lib/Css';
-import { useSwipe } from '../lib/Gestures';
 import { HtmlAttr, useHtml } from '../lib/Html';
 import { useKeyPress } from '../lib/KeyPress';
 import { usePalette } from '../lib/Palette';
+import { useSwipe } from '../lib/Swipe';
 
+const [swipe] = useSwipe();
+const [keypress] = useKeyPress();
 const [palette] = usePalette();
 
 const [css] = useCss({
@@ -20,17 +22,15 @@ const [css] = useCss({
 
 type ViewEvent = 'NONE' | 'NEXT' | 'PREV';
 type SlideAttrSetter = (...attrs: HtmlAttr<'div'>[]) => void;
-type Slide<Names> = {
-  name: Names;
-  element: HTMLElement;
-};
+type Slide<Names> = { name: Names; element: HTMLElement };
+type Callback<Names> = (slides: { slidingIn: Names; slidingOut: Names }) => void;
+type SlideMap<Names> = [HTMLElement, SlideAttrSetter, Names];
 
-export const useSlider = <Names>(
-  slides: Slide<Names>[],
-  cb: (slides: { slidingIn: Names; slidingOut: Names }) => void,
-) => {
-  const slideMap = slides.map(({ name, element }): [HTMLElement, SlideAttrSetter, Names] => {
-    const [container, setContainerAttrs] = useHtml('div', ['class', css('slider_container')]);
+export const useSlider = <Names>(slides: Slide<Names>[], cb: Callback<Names>) => {
+  const createSlide = () => useHtml('div', ['class', css('slider_container')]);
+
+  const slideMap = slides.map(({ name, element }): SlideMap<Names> => {
+    const [container, setContainerAttrs] = createSlide();
     return [container(element), setContainerAttrs, name];
   });
 
@@ -40,48 +40,23 @@ export const useSlider = <Names>(
   const prevSlide = () => slideMap[slideMedianIndex - 1];
   const currSlide = () => slideMap[slideMedianIndex];
   const nextSlide = () => slideMap[slideMedianIndex + 1];
+  swipe('RIGHT', () => machine('NEXT'));
+  swipe('LEFT', () => machine('PREV'));
+  keypress('ArrowRight', () => machine('NEXT'));
+  keypress('Space', () => machine('NEXT'));
+  keypress('ArrowLeft', () => machine('PREV'));
 
-  // methods
-  useKeyPress((key) => {
-    switch (key) {
-      case 'ArrowRight':
-      case 'Space':
-        machine('NEXT');
-        break;
-      case 'ArrowLeft':
-        machine('PREV');
-        break;
-    }
-  });
-
-  useSwipe((direction) => {
-    switch (direction) {
-      case 'RIGHT':
-        machine('NEXT');
-        break;
-      case 'LEFT':
-        machine('PREV');
-        break;
-    }
-  });
-
-  // state machine
-  const machine = (event: ViewEvent = 'NONE') => {
-    switch (event) {
-      case 'NEXT':
-        shiftToEnd(slideMap);
-        break;
-      case 'PREV':
-        shiftToFront(slideMap);
-        break;
-    }
+  // slide update
+  const slide = (event: ViewEvent = 'NONE') => {
+    if (event === 'NEXT') shiftToEnd(slideMap);
+    if (event === 'PREV') shiftToFront(slideMap);
     slideMap.forEach((slide) => {
       const shouldShow = [prevSlide()[2], currSlide()[2], nextSlide()[2]].includes(slide[2]);
       if (!shouldShow) slide[1](['style', 'display:none']);
     });
-    prevSlide()[1](['style', `order:1;left:-110vw;${event === 'NEXT' ? 'transition:left ease-in-out 1s' : null}`]);
+    prevSlide()[1](['style', `order:1;left:-110vw;${event === 'NEXT' ? 'transition:left ease-in-out 1s' : ''}`]);
     currSlide()[1](['style', `order:2;left:5vw;transition:left ease-in-out 1s`]);
-    nextSlide()[1](['style', `order:3;left:110vw;${event === 'PREV' ? 'transition:left ease-in-out 1s' : null}`]);
+    nextSlide()[1](['style', `order:3;left:110vw;${event === 'PREV' ? 'transition:left ease-in-out 1s' : ''}`]);
     const slidingOut = event === 'NEXT' ? prevSlide()[2] : nextSlide()[2];
     const slidingIn = currSlide()[2];
     cb({
@@ -90,6 +65,18 @@ export const useSlider = <Names>(
     });
   };
 
-  machine();
+  // state machine
+  const machine = (event: ViewEvent = 'NONE') => {
+    switch (event) {
+      case 'NEXT':
+        slide('NEXT');
+        break;
+      case 'PREV':
+        slide('PREV');
+        break;
+    }
+  };
+
+  slide();
   return [slideMap.map(([slide]) => slide)];
 };

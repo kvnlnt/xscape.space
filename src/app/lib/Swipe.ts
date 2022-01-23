@@ -1,6 +1,8 @@
 type SwipeDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+type Subscription = () => void;
 
-export const useSwipe = (cb: (direction: SwipeDirection) => void) => {
+export const useSwipe = () => {
+  const subscriptions: { direction: SwipeDirection; callback: Subscription }[] = [];
   document.addEventListener('touchstart', handleTouchStart, false);
   document.addEventListener('touchmove', handleTouchMove, false);
 
@@ -20,12 +22,30 @@ export const useSwipe = (cb: (direction: SwipeDirection) => void) => {
     let xDiff = xDown - xUp;
     let yDiff = yDown - yUp;
     if (Math.abs(xDiff) > Math.abs(yDiff)) {
-      cb(xDiff > 0 ? 'RIGHT' : 'LEFT');
+      subscriptions.forEach((cb) => {
+        if (xDiff > 0) {
+          if (cb.direction === 'RIGHT') cb.callback();
+        } else {
+          if (cb.direction === 'LEFT') cb.callback();
+        }
+      });
     } else {
-      cb(yDiff > 0 ? 'DOWN' : 'UP');
+      subscriptions.forEach((cb) => {
+        if (yDiff > 0) {
+          if (cb.direction === 'DOWN') cb.callback();
+        } else {
+          if (cb.direction === 'UP') cb.callback();
+        }
+      });
     }
-
     xDown = null;
     yDown = null;
   }
+
+  const sub = (direction: SwipeDirection, subscription: Subscription) =>
+    subscriptions.push({
+      direction,
+      callback: subscription,
+    });
+  return [sub];
 };

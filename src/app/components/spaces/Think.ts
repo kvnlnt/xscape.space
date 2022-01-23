@@ -20,7 +20,7 @@ const [kf] = useKeyFrames({
 
 const [css] = useCss({
   container: [
-    ['backgroundColor', palette('green', 0, 0.1)],
+    ['backgroundColor', palette('white', 0, 0.05)],
     ['color', palette('white')],
     ['display', 'flex'],
     ['justifyContent', 'center'],
@@ -31,10 +31,11 @@ const [css] = useCss({
   ],
   title: [
     ['fontFamily', 'anurati'],
-    ['fontSize', '36px'],
+    ['fontSize', '24px'],
     ['letterSpacing', '40px'],
     ['paddingLeft', '40px'],
     ['opacity', '0'],
+    ['transition', 'all 0.5s'],
   ],
   sub_title: [
     ['fontFamily', 'anurati'],
@@ -54,18 +55,19 @@ const [css] = useCss({
     ['animationFillMode', 'forwards'],
     ['animationDuration', '0.5s'],
   ],
+  font_big: [['fontSize', '66px']],
 });
 
 export const useThinkSpace = (): [HTMLElement, () => void, () => void] => {
   const [container] = useHtml('div', ['class', css('container')]);
-  const [title, titleAttrs] = useHtml('div', ['class', css('title')]);
+  const [title, titleAttrs] = useHtml('div', ['class', css('title', 'font_big_on_tablet')]);
   const [subtitle, subtitleAttrs] = useHtml('div', ['class', css('sub_title')]);
   const animateIn = () => {
-    titleAttrs(['class', css('title', 'fade_in')]);
+    titleAttrs(['class', css('title', 'font_big_on_tablet', 'fade_in')]);
     subtitleAttrs(['class', css('sub_title', 'fade_in')]);
   };
   const animateOut = () => {
-    titleAttrs(['class', css('title', 'fade_out')]);
+    titleAttrs(['class', css('title', 'font_big_on_tablet', 'fade_out')]);
     subtitleAttrs(['class', css('sub_title', 'fade_out')]);
   };
   return [container(title('THINK'), subtitle('SPACE')), animateIn, animateOut];

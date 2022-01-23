@@ -83,34 +83,6 @@
     return [getter, setter];
   };
 
-  // src/app/lib/Gestures.ts
-  var useSwipe = (cb) => {
-    document.addEventListener("touchstart", handleTouchStart, false);
-    document.addEventListener("touchmove", handleTouchMove, false);
-    let xDown = null;
-    let yDown = null;
-    function handleTouchStart(evt) {
-      const firstTouch = evt.touches[0];
-      xDown = firstTouch.clientX;
-      yDown = firstTouch.clientY;
-    }
-    function handleTouchMove(evt) {
-      if (!xDown || !yDown)
-        return;
-      let xUp = evt.touches[0].clientX;
-      let yUp = evt.touches[0].clientY;
-      let xDiff = xDown - xUp;
-      let yDiff = yDown - yUp;
-      if (Math.abs(xDiff) > Math.abs(yDiff)) {
-        cb(xDiff > 0 ? "RIGHT" : "LEFT");
-      } else {
-        cb(yDiff > 0 ? "DOWN" : "UP");
-      }
-      xDown = null;
-      yDown = null;
-    }
-  };
-
   // src/app/lib/Html.ts
   function HTML({tag, attrs = [], children = []}) {
     const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
@@ -159,8 +131,16 @@
   }
 
   // src/app/lib/KeyPress.ts
-  var useKeyPress = (cb) => {
-    document.addEventListener("keyup", (e) => cb(e.code));
+  var useKeyPress = () => {
+    const subscriptions = [];
+    document.addEventListener("keyup", (e) => {
+      subscriptions.filter((s) => s.key === e.code).forEach((s) => s.callback());
+    });
+    const sub = (key, callback) => subscriptions.push({
+      key,
+      callback
+    });
+    return [sub];
   };
 
   // src/app/lib/Palette.ts
@@ -187,7 +167,59 @@
     return [getter];
   };
 
+  // src/app/lib/Swipe.ts
+  var useSwipe = () => {
+    const subscriptions = [];
+    document.addEventListener("touchstart", handleTouchStart, false);
+    document.addEventListener("touchmove", handleTouchMove, false);
+    let xDown = null;
+    let yDown = null;
+    function handleTouchStart(evt) {
+      const firstTouch = evt.touches[0];
+      xDown = firstTouch.clientX;
+      yDown = firstTouch.clientY;
+    }
+    function handleTouchMove(evt) {
+      if (!xDown || !yDown)
+        return;
+      let xUp = evt.touches[0].clientX;
+      let yUp = evt.touches[0].clientY;
+      let xDiff = xDown - xUp;
+      let yDiff = yDown - yUp;
+      if (Math.abs(xDiff) > Math.abs(yDiff)) {
+        subscriptions.forEach((cb) => {
+          if (xDiff > 0) {
+            if (cb.direction === "RIGHT")
+              cb.callback();
+          } else {
+            if (cb.direction === "LEFT")
+              cb.callback();
+          }
+        });
+      } else {
+        subscriptions.forEach((cb) => {
+          if (yDiff > 0) {
+            if (cb.direction === "DOWN")
+              cb.callback();
+          } else {
+            if (cb.direction === "UP")
+              cb.callback();
+          }
+        });
+      }
+      xDown = null;
+      yDown = null;
+    }
+    const sub = (direction, subscription) => subscriptions.push({
+      direction,
+      callback: subscription
+    });
+    return [sub];
+  };
+
   // src/app/components/Slider.ts
+  var [swipe] = useSwipe();
+  var [keypress] = useKeyPress();
   var [palette] = usePalette();
   var [css] = useCss({
     slider_container: [
@@ -201,8 +233,9 @@
     ]
   });
   var useSlider = (slides, cb) => {
+    const createSlide = () => useHtml("div", ["class", css("slider_container")]);
     const slideMap = slides.map(({name, element}) => {
-      const [container, setContainerAttrs] = useHtml("div", ["class", css("slider_container")]);
+      const [container, setContainerAttrs] = createSlide();
       return [container(element), setContainerAttrs, name];
     });
     const slideMedianIndex = Math.floor(slides.length / 2);
@@ -211,44 +244,24 @@
     const prevSlide = () => slideMap[slideMedianIndex - 1];
     const currSlide = () => slideMap[slideMedianIndex];
     const nextSlide = () => slideMap[slideMedianIndex + 1];
-    useKeyPress((key) => {
-      switch (key) {
-        case "ArrowRight":
-        case "Space":
-          machine("NEXT");
-          break;
-        case "ArrowLeft":
-          machine("PREV");
-          break;
-      }
-    });
-    useSwipe((direction) => {
-      switch (direction) {
-        case "RIGHT":
-          machine("NEXT");
-          break;
-        case "LEFT":
-          machine("PREV");
-          break;
-      }
-    });
-    const machine = (event = "NONE") => {
-      switch (event) {
-        case "NEXT":
-          shiftToEnd(slideMap);
-          break;
-        case "PREV":
-          shiftToFront(slideMap);
-          break;
-      }
-      slideMap.forEach((slide) => {
-        const shouldShow = [prevSlide()[2], currSlide()[2], nextSlide()[2]].includes(slide[2]);
+    swipe("RIGHT", () => machine("NEXT"));
+    swipe("LEFT", () => machine("PREV"));
+    keypress("ArrowRight", () => machine("NEXT"));
+    keypress("Space", () => machine("NEXT"));
+    keypress("ArrowLeft", () => machine("PREV"));
+    const slide = (event = "NONE") => {
+      if (event === "NEXT")
+        shiftToEnd(slideMap);
+      if (event === "PREV")
+        shiftToFront(slideMap);
+      slideMap.forEach((slide2) => {
+        const shouldShow = [prevSlide()[2], currSlide()[2], nextSlide()[2]].includes(slide2[2]);
         if (!shouldShow)
-          slide[1](["style", "display:none"]);
+          slide2[1](["style", "display:none"]);
       });
-      prevSlide()[1](["style", `order:1;left:-110vw;${event === "NEXT" ? "transition:left ease-in-out 1s" : null}`]);
+      prevSlide()[1](["style", `order:1;left:-110vw;${event === "NEXT" ? "transition:left ease-in-out 1s" : ""}`]);
       currSlide()[1](["style", `order:2;left:5vw;transition:left ease-in-out 1s`]);
-      nextSlide()[1](["style", `order:3;left:110vw;${event === "PREV" ? "transition:left ease-in-out 1s" : null}`]);
+      nextSlide()[1](["style", `order:3;left:110vw;${event === "PREV" ? "transition:left ease-in-out 1s" : ""}`]);
       const slidingOut = event === "NEXT" ? prevSlide()[2] : nextSlide()[2];
       const slidingIn = currSlide()[2];
       cb({
@@ -256,8 +269,18 @@
         slidingOut
       });
     };
-    machine();
-    return [slideMap.map(([slide]) => slide)];
+    const machine = (event = "NONE") => {
+      switch (event) {
+        case "NEXT":
+          slide("NEXT");
+          break;
+        case "PREV":
+          slide("PREV");
+          break;
+      }
+    };
+    slide();
+    return [slideMap.map(([slide2]) => slide2)];
   };
 
   // src/app/lib/FontFace.ts
@@ -341,7 +364,7 @@
   });
   var [css2] = useCss({
     container: [
-      ["backgroundColor", palette2("green", 0, 0.1)],
+      ["backgroundColor", palette2("white", 0, 0.05)],
       ["color", palette2("white")],
       ["display", "flex"],
       ["justifyContent", "center"],
@@ -352,10 +375,11 @@
     ],
     title: [
       ["fontFamily", "anurati"],
-      ["fontSize", "36px"],
+      ["fontSize", "24px"],
       ["letterSpacing", "40px"],
       ["paddingLeft", "40px"],
-      ["opacity", "0"]
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
     ],
     sub_title: [
       ["fontFamily", "anurati"],
@@ -374,18 +398,19 @@
       ["animation", kf("fade_out")],
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
-    ]
+    ],
+    font_big: [["fontSize", "66px"]]
   });
   var useChillSpace = () => {
     const [container] = useHtml("div", ["class", css2("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css2("title")]);
+    const [title, titleAttrs] = useHtml("div", ["class", css2("title", "font_big_on_tablet")]);
     const [subtitle, subtitleAttrs] = useHtml("div", ["class", css2("sub_title")]);
     const animateIn = () => {
-      titleAttrs(["class", css2("title", "fade_in")]);
+      titleAttrs(["class", css2("title", "fade_in", "font_big_on_tablet")]);
       subtitleAttrs(["class", css2("sub_title", "fade_in")]);
     };
     const animateOut = () => {
-      titleAttrs(["class", css2("title", "fade_out")]);
+      titleAttrs(["class", css2("title", "fade_out", "font_big_on_tablet")]);
       subtitleAttrs(["class", css2("sub_title", "fade_out")]);
     };
     return [container(title("CHILL"), subtitle("SPACE")), animateIn, animateOut];
@@ -406,7 +431,7 @@
   });
   var [css3] = useCss({
     container: [
-      ["backgroundColor", palette3("green", 0, 0.1)],
+      ["backgroundColor", palette3("white", 0, 0.05)],
       ["color", palette3("white")],
       ["display", "flex"],
       ["justifyContent", "center"],
@@ -417,10 +442,11 @@
     ],
     title: [
       ["fontFamily", "anurati"],
-      ["fontSize", "36px"],
+      ["fontSize", "24px"],
       ["letterSpacing", "40px"],
       ["paddingLeft", "40px"],
-      ["opacity", "0"]
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
     ],
     sub_title: [
       ["fontFamily", "anurati"],
@@ -439,18 +465,19 @@
       ["animation", kf2("fade_out")],
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
-    ]
+    ],
+    font_big: [["fontSize", "66px"]]
   });
   var useDeepSpace = () => {
     const [container] = useHtml("div", ["class", css3("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css3("title")]);
+    const [title, titleAttrs] = useHtml("div", ["class", css3("title", "font_big_on_tablet")]);
     const [subtitle, subtitleAttrs] = useHtml("div", ["class", css3("sub_title")]);
     const animateIn = () => {
-      titleAttrs(["class", css3("title", "fade_in")]);
+      titleAttrs(["class", css3("title", "fade_in", "font_big_on_tablet")]);
       subtitleAttrs(["class", css3("sub_title", "fade_in")]);
     };
     const animateOut = () => {
-      titleAttrs(["class", css3("title", "fade_out")]);
+      titleAttrs(["class", css3("title", "fade_out", "font_big_on_tablet")]);
       subtitleAttrs(["class", css3("sub_title", "fade_out")]);
     };
     return [container(title("DEEP"), subtitle("SPACE")), animateIn, animateOut];
@@ -471,7 +498,7 @@
   });
   var [css4] = useCss({
     container: [
-      ["backgroundColor", palette4("green", 0, 0.1)],
+      ["backgroundColor", palette4("white", 0, 0.05)],
       ["color", palette4("white")],
       ["display", "flex"],
       ["justifyContent", "center"],
@@ -482,10 +509,11 @@
     ],
     title: [
       ["fontFamily", "anurati"],
-      ["fontSize", "36px"],
+      ["fontSize", "24px"],
       ["letterSpacing", "40px"],
       ["paddingLeft", "40px"],
-      ["opacity", "0"]
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
     ],
     sub_title: [
       ["fontFamily", "anurati"],
@@ -504,18 +532,19 @@
       ["animation", kf3("fade_out")],
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
-    ]
+    ],
+    font_big: [["fontSize", "66px"]]
   });
   var useThinkSpace = () => {
     const [container] = useHtml("div", ["class", css4("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css4("title")]);
+    const [title, titleAttrs] = useHtml("div", ["class", css4("title", "font_big_on_tablet")]);
     const [subtitle, subtitleAttrs] = useHtml("div", ["class", css4("sub_title")]);
     const animateIn = () => {
-      titleAttrs(["class", css4("title", "fade_in")]);
+      titleAttrs(["class", css4("title", "font_big_on_tablet", "fade_in")]);
       subtitleAttrs(["class", css4("sub_title", "fade_in")]);
     };
     const animateOut = () => {
-      titleAttrs(["class", css4("title", "fade_out")]);
+      titleAttrs(["class", css4("title", "font_big_on_tablet", "fade_out")]);
       subtitleAttrs(["class", css4("sub_title", "fade_out")]);
     };
     return [container(title("THINK"), subtitle("SPACE")), animateIn, animateOut];
