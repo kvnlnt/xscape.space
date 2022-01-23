@@ -5,18 +5,10 @@ import { useThinkSpace } from '../components/spaces/Think';
 import { useCss } from '../lib/Css';
 import { useDom } from '../lib/Dom';
 import { useHtml } from '../lib/Html';
-import { useKeyFrames } from '../lib/KeyFrames';
 import { usePalette } from '../lib/Palette';
 import { useProperty } from '../lib/Property';
 
 const [palette] = usePalette();
-
-const [kf] = useKeyFrames({
-  fadeIn: [
-    [0, 'opacity', 0],
-    [100, 'opacity', 1],
-  ],
-});
 
 const [css] = useCss({
   body: [
@@ -34,27 +26,37 @@ const [css] = useCss({
   ],
 });
 
-type ViewState = 'INIT';
+type ViewState = 'SLIDER';
 type Slides = 'THINK' | 'CHILL' | 'DEEP';
 
 export const useEscapePage = () => {
   // props
   useDom<HTMLBodyElement>('body', ['className', css('body')]);
-  const [viewState] = useProperty<ViewState>('INIT');
+  const [viewState] = useProperty<ViewState>('SLIDER');
   const [container] = useHtml('div', ['class', css('container')]);
-  const [thinkSpace] = useThinkSpace();
-  const [chillSpace] = useChillSpace();
-  const [deepSpace] = useDeepSpace();
+  const [thinkSpace, thinkAnimateIn, thinkAnimateOut] = useThinkSpace();
+  const [chillSpace, chillAnimateIn, chillAnimateOut] = useChillSpace();
+  const [deepSpace, deepAnimateIn, deepAnimateOut] = useDeepSpace();
   const [slides] = useSlider<Slides>(
-    { name: 'DEEP', element: deepSpace },
-    { name: 'THINK', element: thinkSpace },
-    { name: 'CHILL', element: chillSpace },
+    [
+      { name: 'DEEP', element: deepSpace },
+      { name: 'THINK', element: thinkSpace },
+      { name: 'CHILL', element: chillSpace },
+    ],
+    ({ slidingIn, slidingOut }) => {
+      if (slidingOut === 'THINK') thinkAnimateOut();
+      if (slidingIn === 'THINK') setTimeout(thinkAnimateIn, 750);
+      if (slidingOut === 'CHILL') chillAnimateOut();
+      if (slidingIn === 'CHILL') setTimeout(chillAnimateIn, 750);
+      if (slidingOut === 'DEEP') deepAnimateOut();
+      if (slidingIn === 'DEEP') setTimeout(deepAnimateIn, 750);
+    },
   );
 
   // state machine
   const machine = () => {
     switch (viewState()) {
-      case 'INIT':
+      case 'SLIDER':
         return [container(...slides)];
     }
   };

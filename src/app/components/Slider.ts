@@ -1,4 +1,5 @@
 import { useCss } from '../lib/Css';
+import { useSwipe } from '../lib/Gestures';
 import { HtmlAttr, useHtml } from '../lib/Html';
 import { useKeyPress } from '../lib/KeyPress';
 import { usePalette } from '../lib/Palette';
@@ -24,7 +25,10 @@ type Slide<Names> = {
   element: HTMLElement;
 };
 
-export const useSlider = <Names>(...slides: Slide<Names>[]) => {
+export const useSlider = <Names>(
+  slides: Slide<Names>[],
+  cb: (slides: { slidingIn: Names; slidingOut: Names }) => void,
+) => {
   const slideMap = slides.map(({ name, element }): [HTMLElement, SlideAttrSetter, Names] => {
     const [container, setContainerAttrs] = useHtml('div', ['class', css('slider_container')]);
     return [container(element), setContainerAttrs, name];
@@ -39,13 +43,23 @@ export const useSlider = <Names>(...slides: Slide<Names>[]) => {
 
   // methods
   useKeyPress((key) => {
-    console.log(key);
     switch (key) {
       case 'ArrowRight':
       case 'Space':
         machine('NEXT');
         break;
       case 'ArrowLeft':
+        machine('PREV');
+        break;
+    }
+  });
+
+  useSwipe((direction) => {
+    switch (direction) {
+      case 'RIGHT':
+        machine('NEXT');
+        break;
+      case 'LEFT':
         machine('PREV');
         break;
     }
@@ -68,6 +82,12 @@ export const useSlider = <Names>(...slides: Slide<Names>[]) => {
     prevSlide()[1](['style', `order:1;left:-110vw;${event === 'NEXT' ? 'transition:left ease-in-out 1s' : null}`]);
     currSlide()[1](['style', `order:2;left:5vw;transition:left ease-in-out 1s`]);
     nextSlide()[1](['style', `order:3;left:110vw;${event === 'PREV' ? 'transition:left ease-in-out 1s' : null}`]);
+    const slidingOut = event === 'NEXT' ? prevSlide()[2] : nextSlide()[2];
+    const slidingIn = currSlide()[2];
+    cb({
+      slidingIn,
+      slidingOut,
+    });
   };
 
   machine();
