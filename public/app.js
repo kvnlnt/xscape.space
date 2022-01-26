@@ -130,19 +130,6 @@
     return [element, updateAttrs];
   }
 
-  // src/app/lib/KeyPress.ts
-  var useKeyPress = () => {
-    const subscriptions = [];
-    document.addEventListener("keyup", (e) => {
-      subscriptions.filter((s) => s.key === e.code).forEach((s) => s.callback());
-    });
-    const sub = (key, callback) => subscriptions.push({
-      key,
-      callback
-    });
-    return [sub];
-  };
-
   // src/app/lib/Palette.ts
   var Colors = {
     black: [0, 0, 5],
@@ -167,89 +154,41 @@
     return [getter];
   };
 
-  // src/app/lib/Swipe.ts
-  var useSwipe = () => {
-    const subscriptions = [];
-    document.addEventListener("touchstart", handleTouchStart, false);
-    document.addEventListener("touchmove", handleTouchMove, false);
-    let xDown = null;
-    let yDown = null;
-    function handleTouchStart(evt) {
-      const firstTouch = evt.touches[0];
-      xDown = firstTouch.clientX;
-      yDown = firstTouch.clientY;
-    }
-    function handleTouchMove(evt) {
-      if (!xDown || !yDown)
-        return;
-      let xUp = evt.touches[0].clientX;
-      let yUp = evt.touches[0].clientY;
-      let xDiff = xDown - xUp;
-      let yDiff = yDown - yUp;
-      if (Math.abs(xDiff) > Math.abs(yDiff)) {
-        subscriptions.forEach((cb) => {
-          if (xDiff > 0) {
-            if (cb.direction === "RIGHT")
-              cb.callback();
-          } else {
-            if (cb.direction === "LEFT")
-              cb.callback();
-          }
-        });
-      } else {
-        subscriptions.forEach((cb) => {
-          if (yDiff > 0) {
-            if (cb.direction === "DOWN")
-              cb.callback();
-          } else {
-            if (cb.direction === "UP")
-              cb.callback();
-          }
-        });
-      }
-      xDown = null;
-      yDown = null;
-    }
-    const sub = (direction, subscription) => subscriptions.push({
-      direction,
-      callback: subscription
-    });
-    return [sub];
-  };
-
   // src/app/components/Slider.ts
-  var [swipe] = useSwipe();
-  var [keypress] = useKeyPress();
   var [palette] = usePalette();
   var [css] = useCss({
+    container: [
+      ["display", "flex"],
+      ["justifyContent", "center"],
+      ["alignItems", "center"],
+      ["height", "100vh"],
+      ["width", "100vw"],
+      ["position", "relative"],
+      ["overflow", "hidden"]
+    ],
     slider_container: [
       ["display", "flex"],
       ["justifyContent", "center"],
       ["alignItems", "center"],
-      ["border", `1px solid ${palette("white", 0, 0.1)}`],
-      ["width", "90vw"],
-      ["height", "90vh"],
+      ["width", "100vw"],
+      ["height", "100vh"],
       ["position", "absolute"]
     ]
   });
   var useSlider = (slides, cb) => {
-    const createSlide = () => useHtml("div", ["class", css("slider_container")]);
-    const slideMap = slides.map(({name, element}) => {
-      const [container, setContainerAttrs] = createSlide();
-      return [container(element), setContainerAttrs, name];
-    });
+    const [container] = useHtml("div", ["class", css("container")]);
+    const createSlide = ({name, element}) => {
+      const [container2, setContainerAttrs] = useHtml("div", ["class", css("slider_container")]);
+      return [container2(element), setContainerAttrs, name];
+    };
+    const slideMap = slides.map(createSlide);
     const slideMedianIndex = Math.floor(slides.length / 2);
     const shiftToEnd = (a) => a.push(a.shift());
     const shiftToFront = (a) => a.unshift(a.pop());
     const prevSlide = () => slideMap[slideMedianIndex - 1];
     const currSlide = () => slideMap[slideMedianIndex];
     const nextSlide = () => slideMap[slideMedianIndex + 1];
-    swipe("RIGHT", () => machine("NEXT"));
-    swipe("LEFT", () => machine("PREV"));
-    keypress("ArrowRight", () => machine("NEXT"));
-    keypress("Space", () => machine("NEXT"));
-    keypress("ArrowLeft", () => machine("PREV"));
-    const slide = (event = "NONE") => {
+    const slide = (event = "INIT") => {
       if (event === "NEXT")
         shiftToEnd(slideMap);
       if (event === "PREV")
@@ -259,18 +198,18 @@
         if (!shouldShow)
           slide2[1](["style", "display:none"]);
       });
-      prevSlide()[1](["style", `order:1;left:-110vw;${event === "NEXT" ? "transition:left ease-in-out 1s" : ""}`]);
-      currSlide()[1](["style", `order:2;left:5vw;transition:left ease-in-out 1s`]);
-      nextSlide()[1](["style", `order:3;left:110vw;${event === "PREV" ? "transition:left ease-in-out 1s" : ""}`]);
+      prevSlide()[1](["style", `order:1;left:-100vw;${event === "NEXT" ? "transition:left ease-in-out 1s" : ""}`]);
+      currSlide()[1](["style", `order:2;left:0vw;transition:left ease-in-out 1s`]);
+      nextSlide()[1](["style", `order:3;left:100vw;${event === "PREV" ? "transition:left ease-in-out 1s" : ""}`]);
       const slidingOut = event === "NEXT" ? prevSlide()[2] : nextSlide()[2];
       const slidingIn = currSlide()[2];
-      cb({
-        slidingIn,
-        slidingOut
-      });
+      cb({slidingIn, slidingOut});
     };
-    const machine = (event = "NONE") => {
+    const machine = (event = "INIT") => {
       switch (event) {
+        case "INIT":
+          slide();
+          break;
         case "NEXT":
           slide("NEXT");
           break;
@@ -279,8 +218,7 @@
           break;
       }
     };
-    slide();
-    return [slideMap.map(([slide2]) => slide2)];
+    return [container(...slideMap.map(([slide2]) => slide2)), machine];
   };
 
   // src/app/lib/FontFace.ts
@@ -333,7 +271,7 @@
       declarationList.forEach(([selector, declaration]) => {
         styles.push(`@keyframes ${selector}_${id} {
 `);
-        declaration.forEach(([percent, prop, val]) => styles.push(`${percent}% { ${prop}: ${val}; }
+        declaration.forEach(([percent, prop, val]) => styles.push(`${percent}% { ${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${val}; }
 `));
         styles.push(`}
 `);
@@ -349,205 +287,17 @@
     return [getter, setter];
   };
 
-  // src/app/components/spaces/Chill.ts
-  var [palette2] = usePalette();
-  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
-  var [kf] = useKeyFrames({
-    fade_in: [
-      [0, "opacity", 0],
-      [100, "opacity", 1]
-    ],
-    fade_out: [
-      [0, "opacity", 1],
-      [100, "opacity", 0]
-    ]
-  });
-  var [css2] = useCss({
-    container: [
-      ["backgroundColor", palette2("white", 0, 0.05)],
-      ["color", palette2("white")],
-      ["display", "flex"],
-      ["justifyContent", "center"],
-      ["alignItems", "center"],
-      ["width", "100%"],
-      ["height", "100%"],
-      ["flexDirection", "column"]
-    ],
-    title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "24px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["opacity", "0"],
-      ["transition", "all 0.5s"]
-    ],
-    sub_title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"]
-    ],
-    fade_in: [
-      ["animation", kf("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    fade_out: [
-      ["animation", kf("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    font_big: [["fontSize", "66px"]]
-  });
-  var useChillSpace = () => {
-    const [container] = useHtml("div", ["class", css2("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css2("title", "font_big_on_tablet")]);
-    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css2("sub_title")]);
-    const animateIn = () => {
-      titleAttrs(["class", css2("title", "fade_in", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css2("sub_title", "fade_in")]);
-    };
-    const animateOut = () => {
-      titleAttrs(["class", css2("title", "fade_out", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css2("sub_title", "fade_out")]);
-    };
-    return [container(title("CHILL"), subtitle("SPACE")), animateIn, animateOut];
-  };
-
-  // src/app/components/spaces/Deep.ts
-  var [palette3] = usePalette();
-  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
-  var [kf2] = useKeyFrames({
-    fade_in: [
-      [0, "opacity", 0],
-      [100, "opacity", 1]
-    ],
-    fade_out: [
-      [0, "opacity", 1],
-      [100, "opacity", 0]
-    ]
-  });
-  var [css3] = useCss({
-    container: [
-      ["backgroundColor", palette3("white", 0, 0.05)],
-      ["color", palette3("white")],
-      ["display", "flex"],
-      ["justifyContent", "center"],
-      ["alignItems", "center"],
-      ["width", "100%"],
-      ["height", "100%"],
-      ["flexDirection", "column"]
-    ],
-    title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "24px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["opacity", "0"],
-      ["transition", "all 0.5s"]
-    ],
-    sub_title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"]
-    ],
-    fade_in: [
-      ["animation", kf2("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    fade_out: [
-      ["animation", kf2("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    font_big: [["fontSize", "66px"]]
-  });
-  var useDeepSpace = () => {
-    const [container] = useHtml("div", ["class", css3("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css3("title", "font_big_on_tablet")]);
-    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css3("sub_title")]);
-    const animateIn = () => {
-      titleAttrs(["class", css3("title", "fade_in", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css3("sub_title", "fade_in")]);
-    };
-    const animateOut = () => {
-      titleAttrs(["class", css3("title", "fade_out", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css3("sub_title", "fade_out")]);
-    };
-    return [container(title("DEEP"), subtitle("SPACE")), animateIn, animateOut];
-  };
-
-  // src/app/components/spaces/Think.ts
-  var [palette4] = usePalette();
-  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
-  var [kf3] = useKeyFrames({
-    fade_in: [
-      [0, "opacity", 0],
-      [100, "opacity", 1]
-    ],
-    fade_out: [
-      [0, "opacity", 1],
-      [100, "opacity", 0]
-    ]
-  });
-  var [css4] = useCss({
-    container: [
-      ["backgroundColor", palette4("white", 0, 0.05)],
-      ["color", palette4("white")],
-      ["display", "flex"],
-      ["justifyContent", "center"],
-      ["alignItems", "center"],
-      ["width", "100%"],
-      ["height", "100%"],
-      ["flexDirection", "column"]
-    ],
-    title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "24px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["opacity", "0"],
-      ["transition", "all 0.5s"]
-    ],
-    sub_title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"]
-    ],
-    fade_in: [
-      ["animation", kf3("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    fade_out: [
-      ["animation", kf3("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    font_big: [["fontSize", "66px"]]
-  });
-  var useThinkSpace = () => {
-    const [container] = useHtml("div", ["class", css4("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css4("title", "font_big_on_tablet")]);
-    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css4("sub_title")]);
-    const animateIn = () => {
-      titleAttrs(["class", css4("title", "font_big_on_tablet", "fade_in")]);
-      subtitleAttrs(["class", css4("sub_title", "fade_in")]);
-    };
-    const animateOut = () => {
-      titleAttrs(["class", css4("title", "font_big_on_tablet", "fade_out")]);
-      subtitleAttrs(["class", css4("sub_title", "fade_out")]);
-    };
-    return [container(title("THINK"), subtitle("SPACE")), animateIn, animateOut];
+  // src/app/lib/KeyPress.ts
+  var useKeyPress = () => {
+    const subscriptions = [];
+    document.addEventListener("keyup", (e) => {
+      subscriptions.filter((s) => s.key === e.code).forEach((s) => s.callback());
+    });
+    const sub = (key, callback) => subscriptions.push({
+      key,
+      callback
+    });
+    return [sub];
   };
 
   // src/app/lib/Property.ts
@@ -562,6 +312,629 @@
     return [getter, setter];
   };
 
+  // src/app/components/spaces/Chill.ts
+  var [palette2] = usePalette();
+  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
+  var [kf] = useKeyFrames({
+    fade_in: [
+      [0, "opacity", 0],
+      [100, "opacity", 1]
+    ],
+    fade_out: [
+      [0, "opacity", 1],
+      [100, "opacity", 0]
+    ],
+    container_zoom_width_in: [
+      [0, "width", "90vw"],
+      [100, "width", "100vw"]
+    ],
+    container_zoom_width_out: [
+      [0, "width", "100vw"],
+      [100, "width", "90vw"]
+    ],
+    container_zoom_height_in: [
+      [0, "height", "90vh"],
+      [100, "height", "100vh"]
+    ],
+    container_zoom_height_out: [
+      [0, "height", "100vh"],
+      [100, "height", "90vh"]
+    ]
+  });
+  var [css2] = useCss({
+    container: [
+      ["backgroundColor", palette2("white", 0, 0.05)],
+      ["color", palette2("white")],
+      ["display", "flex"],
+      ["justifyContent", "center"],
+      ["alignItems", "center"],
+      ["width", "90vw"],
+      ["height", "90vh"],
+      ["border", `1px solid ${palette2("white", 0, 0.1)}`],
+      ["flexDirection", "column"]
+    ],
+    container_active: [
+      ["animation", kf("container_zoom_width_in", "container_zoom_height_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    container_deactive: [
+      ["animation", kf("container_zoom_width_out", "container_zoom_height_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    enter_button: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["marginTop", "40px"],
+      ["opacity", "0"],
+      ["padding", "20px"],
+      ["backgroundColor", palette2("white", 0, 0.01)],
+      ["color", palette2("white")],
+      ["border", `1px dashed ${palette2("white", 0, 0.1)}`],
+      ["cursor", "pointer"],
+      ["letterSpacing", "4px"]
+    ],
+    enter_button_transition_in: [
+      ["animation", kf("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    enter_button_transition_out: [
+      ["animation", kf("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    font_big: [["fontSize", "66px"]],
+    sub_title: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["marginTop", "40px"],
+      ["opacity", "0"]
+    ],
+    sub_title_transition_in: [
+      ["animation", kf("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    sub_title_transition_out: [
+      ["animation", kf("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    title: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "24px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
+    ],
+    title_transition_in: [
+      ["animation", kf("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    title_transition_out: [
+      ["animation", kf("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    transition_bar: [
+      ["position", "fixed"],
+      ["backgroundColor", palette2("white")],
+      ["top", "50vh"],
+      ["height", "0vh"],
+      ["width", "100vw"],
+      ["transition", "all 0.5s"]
+    ],
+    transition_bar_in: [
+      ["top", "50vh"],
+      ["height", "0vh"],
+      ["transition", "all 0.5s"]
+    ],
+    transition_bar_out: [
+      ["top", "45vh"],
+      ["height", "10vh"],
+      ["transition", "all 0.5s"]
+    ]
+  });
+  var useChillSpace = ({
+    onActivation,
+    onDeactivation
+  }) => {
+    const [keypress] = useKeyPress();
+    const [state, setState] = useProperty("PASSIVE");
+    const [container, containerAttrs] = useHtml("div", ["class", css2("container")]);
+    const [title, titleAttrs] = useHtml("div", ["class", css2("title", "font_big_on_tablet")]);
+    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css2("sub_title")]);
+    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css2("transition_bar")]);
+    const [enterButton, enterButtonAttrs] = useHtml("button", ["class", css2("enter_button")], ["onclick", () => machine("ACTIVATE")]);
+    keypress("Escape", () => machine("DEACTIVATE"));
+    const activate = () => {
+      containerAttrs(["class", css2("container", "container_active")]);
+    };
+    const deactivate = () => {
+      containerAttrs(["class", css2("container", "container_deactive")]);
+    };
+    const slideInAnimation = () => {
+      titleAttrs(["class", css2("title", "title_transition_in", "font_big_on_tablet")]);
+      subtitleAttrs(["class", css2("sub_title", "sub_title_transition_in")]);
+      enterButtonAttrs(["class", css2("enter_button", "enter_button_transition_in")]);
+    };
+    const slideOutAnimation = () => {
+      titleAttrs(["class", css2("title", "font_big_on_tablet", "title_transition_out")]);
+      subtitleAttrs(["class", css2("sub_title", "sub_title_transition_out")]);
+      enterButtonAttrs(["class", css2("enter_button", "enter_button_transition_out")]);
+    };
+    const machine = (event) => {
+      console.log(event, state());
+      switch (state()) {
+        case "PASSIVE":
+          switch (event) {
+            case "SLIDE_IN":
+              slideInAnimation();
+              break;
+            case "SLIDE_OUT":
+              slideOutAnimation();
+              break;
+            case "ACTIVATE":
+              activate();
+              if (onActivation)
+                onActivation();
+              setState("ACTIVE");
+              break;
+          }
+          break;
+        case "ACTIVE":
+          switch (event) {
+            case "DEACTIVATE":
+              deactivate();
+              if (onDeactivation)
+                onDeactivation();
+              setState("PASSIVE");
+              break;
+          }
+          break;
+      }
+    };
+    return [container(title("CHILL"), subtitle("SPACE"), enterButton("[ ESC ]"), transitionBar()), machine];
+  };
+
+  // src/app/components/spaces/Deep.ts
+  var [palette3] = usePalette();
+  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
+  var [kf2] = useKeyFrames({
+    fade_in: [
+      [0, "opacity", 0],
+      [100, "opacity", 1]
+    ],
+    fade_out: [
+      [0, "opacity", 1],
+      [100, "opacity", 0]
+    ],
+    container_zoom_width_in: [
+      [0, "width", "90vw"],
+      [100, "width", "100vw"]
+    ],
+    container_zoom_width_out: [
+      [0, "width", "100vw"],
+      [100, "width", "90vw"]
+    ],
+    container_zoom_height_in: [
+      [0, "height", "90vh"],
+      [100, "height", "100vh"]
+    ],
+    container_zoom_height_out: [
+      [0, "height", "100vh"],
+      [100, "height", "90vh"]
+    ]
+  });
+  var [css3] = useCss({
+    container: [
+      ["backgroundColor", palette3("white", 0, 0.05)],
+      ["color", palette3("white")],
+      ["display", "flex"],
+      ["justifyContent", "center"],
+      ["alignItems", "center"],
+      ["width", "90vw"],
+      ["height", "90vh"],
+      ["border", `1px solid ${palette3("white", 0, 0.1)}`],
+      ["flexDirection", "column"]
+    ],
+    container_active: [
+      ["animation", kf2("container_zoom_width_in", "container_zoom_height_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    container_deactive: [
+      ["animation", kf2("container_zoom_width_out", "container_zoom_height_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    enter_button: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["marginTop", "40px"],
+      ["opacity", "0"],
+      ["padding", "20px"],
+      ["backgroundColor", palette3("white", 0, 0.01)],
+      ["color", palette3("white")],
+      ["border", `1px dashed ${palette3("white", 0, 0.1)}`],
+      ["cursor", "pointer"],
+      ["letterSpacing", "4px"]
+    ],
+    enter_button_transition_in: [
+      ["animation", kf2("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    enter_button_transition_out: [
+      ["animation", kf2("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    font_big: [["fontSize", "66px"]],
+    sub_title: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["marginTop", "40px"],
+      ["opacity", "0"]
+    ],
+    sub_title_transition_in: [
+      ["animation", kf2("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    sub_title_transition_out: [
+      ["animation", kf2("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    title: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "24px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
+    ],
+    title_transition_in: [
+      ["animation", kf2("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    title_transition_out: [
+      ["animation", kf2("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    transition_bar: [
+      ["position", "fixed"],
+      ["backgroundColor", palette3("white")],
+      ["top", "50vh"],
+      ["height", "0vh"],
+      ["width", "100vw"],
+      ["transition", "all 0.5s"]
+    ],
+    transition_bar_in: [
+      ["top", "50vh"],
+      ["height", "0vh"],
+      ["transition", "all 0.5s"]
+    ],
+    transition_bar_out: [
+      ["top", "45vh"],
+      ["height", "10vh"],
+      ["transition", "all 0.5s"]
+    ]
+  });
+  var useDeepSpace = ({
+    onActivation,
+    onDeactivation
+  }) => {
+    const [keypress] = useKeyPress();
+    const [state, setState] = useProperty("PASSIVE");
+    const [container, containerAttrs] = useHtml("div", ["class", css3("container")]);
+    const [title, titleAttrs] = useHtml("div", ["class", css3("title", "font_big_on_tablet")]);
+    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css3("sub_title")]);
+    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css3("transition_bar")]);
+    const [enterButton, enterButtonAttrs] = useHtml("button", ["class", css3("enter_button")], ["onclick", () => machine("ACTIVATE")]);
+    keypress("Escape", () => machine("DEACTIVATE"));
+    const activate = () => {
+      containerAttrs(["class", css3("container", "container_active")]);
+    };
+    const deactivate = () => {
+      containerAttrs(["class", css3("container", "container_deactive")]);
+    };
+    const slideInAnimation = () => {
+      titleAttrs(["class", css3("title", "title_transition_in", "font_big_on_tablet")]);
+      subtitleAttrs(["class", css3("sub_title", "sub_title_transition_in")]);
+      enterButtonAttrs(["class", css3("enter_button", "enter_button_transition_in")]);
+    };
+    const slideOutAnimation = () => {
+      titleAttrs(["class", css3("title", "font_big_on_tablet", "title_transition_out")]);
+      subtitleAttrs(["class", css3("sub_title", "sub_title_transition_out")]);
+      enterButtonAttrs(["class", css3("enter_button", "enter_button_transition_out")]);
+    };
+    const machine = (event) => {
+      console.log(event, state());
+      switch (state()) {
+        case "PASSIVE":
+          switch (event) {
+            case "SLIDE_IN":
+              slideInAnimation();
+              break;
+            case "SLIDE_OUT":
+              slideOutAnimation();
+              break;
+            case "ACTIVATE":
+              activate();
+              if (onActivation)
+                onActivation();
+              setState("ACTIVE");
+              break;
+          }
+          break;
+        case "ACTIVE":
+          switch (event) {
+            case "DEACTIVATE":
+              deactivate();
+              if (onDeactivation)
+                onDeactivation();
+              setState("PASSIVE");
+              break;
+          }
+          break;
+      }
+    };
+    return [container(title("DEEP"), subtitle("SPACE"), enterButton("[ ESC ]"), transitionBar()), machine];
+  };
+
+  // src/app/components/spaces/Think.ts
+  var [palette4] = usePalette();
+  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
+  var [kf3] = useKeyFrames({
+    fade_in: [
+      [0, "opacity", 0],
+      [100, "opacity", 1]
+    ],
+    fade_out: [
+      [0, "opacity", 1],
+      [100, "opacity", 0]
+    ],
+    container_zoom_width_in: [
+      [0, "width", "90vw"],
+      [100, "width", "100vw"]
+    ],
+    container_zoom_width_out: [
+      [0, "width", "100vw"],
+      [100, "width", "90vw"]
+    ],
+    container_zoom_height_in: [
+      [0, "height", "90vh"],
+      [100, "height", "100vh"]
+    ],
+    container_zoom_height_out: [
+      [0, "height", "100vh"],
+      [100, "height", "90vh"]
+    ]
+  });
+  var [css4] = useCss({
+    container: [
+      ["backgroundColor", palette4("white", 0, 0.05)],
+      ["color", palette4("white")],
+      ["display", "flex"],
+      ["justifyContent", "center"],
+      ["alignItems", "center"],
+      ["width", "90vw"],
+      ["height", "90vh"],
+      ["border", `1px solid ${palette4("white", 0, 0.1)}`],
+      ["flexDirection", "column"]
+    ],
+    container_active: [
+      ["animation", kf3("container_zoom_width_in", "container_zoom_height_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    container_deactive: [
+      ["animation", kf3("container_zoom_width_out", "container_zoom_height_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    enter_button: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["marginTop", "40px"],
+      ["opacity", "0"],
+      ["padding", "20px"],
+      ["backgroundColor", palette4("white", 0, 0.01)],
+      ["color", palette4("white")],
+      ["border", `1px dashed ${palette4("white", 0, 0.1)}`],
+      ["cursor", "pointer"],
+      ["letterSpacing", "4px"]
+    ],
+    enter_button_transition_in: [
+      ["animation", kf3("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    enter_button_transition_out: [
+      ["animation", kf3("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    font_big: [["fontSize", "66px"]],
+    sub_title: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["marginTop", "40px"],
+      ["opacity", "0"]
+    ],
+    sub_title_transition_in: [
+      ["animation", kf3("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    sub_title_transition_out: [
+      ["animation", kf3("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    title: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "24px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
+    ],
+    title_transition_in: [
+      ["animation", kf3("fade_in")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    title_transition_out: [
+      ["animation", kf3("fade_out")],
+      ["animationFillMode", "forwards"],
+      ["animationDuration", "0.5s"]
+    ],
+    transition_bar: [
+      ["position", "fixed"],
+      ["backgroundColor", palette4("white")],
+      ["top", "50vh"],
+      ["height", "0vh"],
+      ["width", "100vw"],
+      ["transition", "all 0.5s"]
+    ],
+    transition_bar_in: [
+      ["top", "50vh"],
+      ["height", "0vh"],
+      ["transition", "all 0.5s"]
+    ],
+    transition_bar_out: [
+      ["top", "45vh"],
+      ["height", "10vh"],
+      ["transition", "all 0.5s"]
+    ]
+  });
+  var useThinkSpace = ({
+    onActivation,
+    onDeactivation
+  }) => {
+    const [keypress] = useKeyPress();
+    const [state, setState] = useProperty("PASSIVE");
+    const [container, containerAttrs] = useHtml("div", ["class", css4("container")]);
+    const [title, titleAttrs] = useHtml("div", ["class", css4("title", "font_big_on_tablet")]);
+    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css4("sub_title")]);
+    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css4("transition_bar")]);
+    const [enterButton, enterButtonAttrs] = useHtml("button", ["class", css4("enter_button")], ["onclick", () => machine("ACTIVATE")]);
+    keypress("Escape", () => machine("DEACTIVATE"));
+    const activate = () => {
+      containerAttrs(["class", css4("container", "container_active")]);
+    };
+    const deactivate = () => {
+      containerAttrs(["class", css4("container", "container_deactive")]);
+    };
+    const slideInAnimation = () => {
+      titleAttrs(["class", css4("title", "title_transition_in", "font_big_on_tablet")]);
+      subtitleAttrs(["class", css4("sub_title", "sub_title_transition_in")]);
+      enterButtonAttrs(["class", css4("enter_button", "enter_button_transition_in")]);
+    };
+    const slideOutAnimation = () => {
+      titleAttrs(["class", css4("title", "font_big_on_tablet", "title_transition_out")]);
+      subtitleAttrs(["class", css4("sub_title", "sub_title_transition_out")]);
+      enterButtonAttrs(["class", css4("enter_button", "enter_button_transition_out")]);
+    };
+    const machine = (event) => {
+      console.log(event, state());
+      switch (state()) {
+        case "PASSIVE":
+          switch (event) {
+            case "SLIDE_IN":
+              slideInAnimation();
+              break;
+            case "SLIDE_OUT":
+              slideOutAnimation();
+              break;
+            case "ACTIVATE":
+              activate();
+              if (onActivation)
+                onActivation();
+              setState("ACTIVE");
+              break;
+          }
+          break;
+        case "ACTIVE":
+          switch (event) {
+            case "DEACTIVATE":
+              deactivate();
+              if (onDeactivation)
+                onDeactivation();
+              setState("PASSIVE");
+              break;
+          }
+          break;
+      }
+    };
+    return [container(title("THINK"), subtitle("SPACE"), enterButton("[ ESC ]"), transitionBar()), machine];
+  };
+
+  // src/app/lib/Swipe.ts
+  var useSwipe = () => {
+    const subscriptions = [];
+    document.addEventListener("touchstart", handleTouchStart, false);
+    document.addEventListener("touchmove", handleTouchMove, false);
+    let xDown = null;
+    let yDown = null;
+    function handleTouchStart(evt) {
+      const firstTouch = evt.touches[0];
+      xDown = firstTouch.clientX;
+      yDown = firstTouch.clientY;
+    }
+    function handleTouchMove(evt) {
+      if (!xDown || !yDown)
+        return;
+      let xUp = evt.touches[0].clientX;
+      let yUp = evt.touches[0].clientY;
+      let xDiff = xDown - xUp;
+      let yDiff = yDown - yUp;
+      if (Math.abs(xDiff) > Math.abs(yDiff)) {
+        subscriptions.forEach((cb) => {
+          if (xDiff > 0) {
+            if (cb.direction === "RIGHT")
+              cb.callback();
+          } else {
+            if (cb.direction === "LEFT")
+              cb.callback();
+          }
+        });
+      } else {
+        subscriptions.forEach((cb) => {
+          if (yDiff > 0) {
+            if (cb.direction === "DOWN")
+              cb.callback();
+          } else {
+            if (cb.direction === "UP")
+              cb.callback();
+          }
+        });
+      }
+      xDown = null;
+      yDown = null;
+    }
+    const sub = (direction, subscription) => subscriptions.push({
+      direction,
+      callback: subscription
+    });
+    return [sub];
+  };
+
   // src/app/pages/Escape.ts
   var [palette5] = usePalette();
   var [css5] = useCss({
@@ -570,55 +943,130 @@
       ["overflow", "hidden"]
     ],
     container: [
-      ["display", "flex"],
-      ["justifyContent", "center"],
-      ["alignItems", "center"],
-      ["height", "100vh"],
       ["width", "100vw"],
-      ["position", "relative"],
-      ["overflow", "hidden"]
+      ["height", "100vh"]
+    ],
+    transition_bar: [
+      ["position", "fixed"],
+      ["backgroundColor", palette5("purple", 0, 0.01)],
+      ["top", "-25vh"],
+      ["left", "-25vw"],
+      ["height", "150vh"],
+      ["width", "150vw"],
+      ["transition", "all 0.5s"],
+      ["borderRadius", "100%"]
+    ],
+    transition_bar_in: [
+      ["top", "50vh"],
+      ["left", "50vw"],
+      ["height", "0vw"],
+      ["width", "0vw"],
+      ["transition", "all 0.5s"],
+      ["borderRadius", "100vw"],
+      ["transform", "rotate(720deg)"]
+    ],
+    transition_bar_out: [
+      ["top", "-25vh"],
+      ["left", "-25vw"],
+      ["height", "150vh"],
+      ["width", "150vw"],
+      ["transition", "all 0.5s"]
     ]
   });
-  var useEscapePage = () => {
+  var useEscapePage = (parent) => {
     useDom("body", ["className", css5("body")]);
-    const [viewState] = useProperty("SLIDER");
+    const [swipe] = useSwipe();
+    const [keypress] = useKeyPress();
+    const [state, setState] = useProperty("INIT");
+    const [currentSlide, setCurrentSlide] = useProperty("THINK");
     const [container] = useHtml("div", ["class", css5("container")]);
-    const [thinkSpace, thinkAnimateIn, thinkAnimateOut] = useThinkSpace();
-    const [chillSpace, chillAnimateIn, chillAnimateOut] = useChillSpace();
-    const [deepSpace, deepAnimateIn, deepAnimateOut] = useDeepSpace();
-    const [slides] = useSlider([
+    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css5("transition_bar")]);
+    const [transitionBar2, transitionBarAttrs2] = useHtml("div", ["class", css5("transition_bar")], ["style", "transition-delay:0.05s"]);
+    const [thinkSpace, thinkMachine] = useThinkSpace({
+      onActivation: () => machine("ESCAPE_TO_THINK_SPACE"),
+      onDeactivation: () => machine("ESCAPE")
+    });
+    const [chillSpace, chillMachine] = useChillSpace({
+      onActivation: () => machine("ESCAPE_TO_CHILL_SPACE"),
+      onDeactivation: () => machine("ESCAPE")
+    });
+    const [deepSpace, deepMachine] = useDeepSpace({
+      onActivation: () => machine("ESCAPE_TO_DEEP_SPACE"),
+      onDeactivation: () => machine("ESCAPE")
+    });
+    const [slides, slider] = useSlider([
       {name: "DEEP", element: deepSpace},
       {name: "THINK", element: thinkSpace},
       {name: "CHILL", element: chillSpace}
     ], ({slidingIn, slidingOut}) => {
       if (slidingOut === "THINK")
-        thinkAnimateOut();
+        thinkMachine("SLIDE_OUT");
       if (slidingIn === "THINK")
-        setTimeout(thinkAnimateIn, 750);
+        setTimeout(() => thinkMachine("SLIDE_IN"), 750);
       if (slidingOut === "CHILL")
-        chillAnimateOut();
+        chillMachine("SLIDE_OUT");
       if (slidingIn === "CHILL")
-        setTimeout(chillAnimateIn, 750);
+        setTimeout(() => chillMachine("SLIDE_IN"), 750);
       if (slidingOut === "DEEP")
-        deepAnimateOut();
+        deepMachine("SLIDE_OUT");
       if (slidingIn === "DEEP")
-        setTimeout(deepAnimateIn, 750);
+        setTimeout(() => deepMachine("SLIDE_IN"), 750);
+      transitionBarAttrs(["class", css5("transition_bar", "transition_bar_out")]);
+      transitionBarAttrs2(["class", css5("transition_bar", "transition_bar_out")]);
+      setTimeout(() => {
+        transitionBarAttrs(["class", css5("transition_bar", "transition_bar_in")]);
+        transitionBarAttrs2(["class", css5("transition_bar", "transition_bar_in")]);
+      }, 1e3);
+      setCurrentSlide(slidingIn);
     });
-    const machine = () => {
-      switch (viewState()) {
-        case "SLIDER":
-          return [container(...slides)];
+    swipe("RIGHT", () => machine("NEXT_SLIDE"));
+    swipe("LEFT", () => machine("PREV_SLIDE"));
+    keypress("ArrowRight", () => machine("NEXT_SLIDE"));
+    keypress("ArrowLeft", () => machine("PREV_SLIDE"));
+    const machine = (event = null) => {
+      switch (state()) {
+        case "INIT":
+          parent(container(slides, transitionBar(), transitionBar2()));
+          slider("INIT");
+          setState("SEARCHING");
+          break;
+        case "SEARCHING":
+          switch (event) {
+            case "NEXT_SLIDE":
+              slider("NEXT");
+              break;
+            case "PREV_SLIDE":
+              slider("PREV");
+              break;
+            case "ESCAPE_TO_THINK_SPACE":
+              setState("THINKING");
+              break;
+            case "ESCAPE_TO_CHILL_SPACE":
+              setState("CHILLING");
+              break;
+            case "ESCAPE_TO_DEEP_SPACE":
+              setState("IN_DEEP");
+              break;
+          }
+          break;
+        case "THINKING":
+        case "CHILLING":
+        case "IN_DEEP":
+          switch (event) {
+            case "ESCAPE":
+              setState("SEARCHING");
+              break;
+          }
       }
     };
-    return machine();
+    machine();
   };
 
   // src/main.ts
   window.addEventListener("DOMContentLoaded", async () => {
     const resetStyle = `margin:0px;padding:0px;width:100vw;height:100vh;`;
     const [body] = useDom("body", ["style", resetStyle]);
-    const [escapePage] = useEscapePage();
-    body(escapePage);
+    useEscapePage(body);
   });
 })();
 //# sourceMappingURL=app.js.map

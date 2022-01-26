@@ -1,4 +1,4 @@
-type KeyPressed = 'ArrowLeft' | 'ArrowRight' | 'Space';
+type KeyPressed = 'ArrowLeft' | 'ArrowRight' | 'Escape' | 'Space';
 type Subscription = () => void;
 
 export const useKeyPress = () => {

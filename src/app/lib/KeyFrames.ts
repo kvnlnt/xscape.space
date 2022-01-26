@@ -30,7 +30,9 @@ export const useKeyFrames = <T>(
     const declarationList = Object.entries(declarations).sort((a, b) => (a[0] < b[0] ? -1 : 1));
     declarationList.forEach(([selector, declaration]: [string, KeyframeStyleDeclaration]) => {
       styles.push(`@keyframes ${selector}_${id} {\n`);
-      declaration.forEach(([percent, prop, val]) => styles.push(`${percent}% { ${prop}: ${val}; }\n`));
+      declaration.forEach(([percent, prop, val]) =>
+        styles.push(`${percent}% { ${(<string>prop).replace(/([A-Z])/g, '-$1').toLowerCase()}: ${val}; }\n`),
+      );
       styles.push(`}\n`);
     });
     style.innerHTML = styles.join('');
