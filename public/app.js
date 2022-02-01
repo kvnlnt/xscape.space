@@ -109,7 +109,9 @@
     let container;
     let hasRendered = false;
     const replace = (...children) => {
-      const newContainer = HTML({tag, attrs, children});
+      const attrs2 = [];
+      Array.from(container.attributes).forEach((attr) => attrs2.push([attr.name, attr.value]));
+      const newContainer = HTML({tag, attrs: attrs2, children});
       container.replaceWith(newContainer);
       container = newContainer;
       return container;
@@ -287,19 +289,6 @@
     return [getter, setter];
   };
 
-  // src/app/lib/KeyPress.ts
-  var useKeyPress = () => {
-    const subscriptions = [];
-    document.addEventListener("keyup", (e) => {
-      subscriptions.filter((s) => s.key === e.code).forEach((s) => s.callback());
-    });
-    const sub = (key, callback) => subscriptions.push({
-      key,
-      callback
-    });
-    return [sub];
-  };
-
   // src/app/lib/Property.ts
   var useProperty = (prop, callback) => {
     let property = prop;
@@ -312,18 +301,10 @@
     return [getter, setter];
   };
 
-  // src/app/components/spaces/Chill.ts
+  // src/app/components/Space.ts
   var [palette2] = usePalette();
   useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
   var [kf] = useKeyFrames({
-    fade_in: [
-      [0, "opacity", 0],
-      [100, "opacity", 1]
-    ],
-    fade_out: [
-      [0, "opacity", 1],
-      [100, "opacity", 0]
-    ],
     container_zoom_width_in: [
       [0, "width", "90vw"],
       [100, "width", "100vw"]
@@ -339,6 +320,14 @@
     container_zoom_height_out: [
       [0, "height", "100vh"],
       [100, "height", "90vh"]
+    ],
+    fade_in: [
+      [0, "opacity", 0],
+      [100, "opacity", 1]
+    ],
+    fade_out: [
+      [0, "opacity", 1],
+      [100, "opacity", 0]
     ]
   });
   var [css2] = useCss({
@@ -351,7 +340,8 @@
       ["width", "90vw"],
       ["height", "90vh"],
       ["border", `1px solid ${palette2("white", 0, 0.1)}`],
-      ["flexDirection", "column"]
+      ["flexDirection", "column"],
+      ["position", "relative"]
     ],
     container_active: [
       ["animation", kf("container_zoom_width_in", "container_zoom_height_in")],
@@ -363,24 +353,41 @@
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
     ],
-    enter_button: [
+    current_title: [
+      ["position", "fixed"],
+      ["bottom", "10vh"],
+      ["left", "10vw"]
+    ],
+    play_button: [
       ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
+      ["fontSize", "5vh"],
       ["marginTop", "40px"],
       ["opacity", "0"],
-      ["padding", "20px"],
-      ["backgroundColor", palette2("white", 0, 0.01)],
-      ["color", palette2("white")],
-      ["border", `1px dashed ${palette2("white", 0, 0.1)}`],
+      ["padding", "20px 20px 20px 24px  "],
+      ["backgroundColor", palette2("transparent")],
+      ["color", palette2("white", 0, 0.5)],
+      ["border", `0`],
       ["cursor", "pointer"],
-      ["letterSpacing", "4px"]
+      ["transition", "all 0.5s"]
     ],
-    enter_button_transition_in: [
+    play_button_active: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "3vh"],
+      ["marginTop", "0px"],
+      ["opacity", "100"],
+      ["padding", "20px 20px 20px 24px  "],
+      ["backgroundColor", palette2("transparent")],
+      ["color", palette2("white", 0, 0.5)],
+      ["border", `0`],
+      ["cursor", "pointer"],
+      ["transition", "all 0.5s"]
+    ],
+    play_button_transition_in: [
       ["animation", kf("fade_in")],
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
     ],
-    enter_button_transition_out: [
+    play_button_transition_out: [
       ["animation", kf("fade_out")],
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
@@ -392,7 +399,17 @@
       ["letterSpacing", "40px"],
       ["paddingLeft", "40px"],
       ["marginTop", "40px"],
-      ["opacity", "0"]
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
+    ],
+    sub_title_active: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "10px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["marginTop", "0px"],
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
     ],
     sub_title_transition_in: [
       ["animation", kf("fade_in")],
@@ -404,7 +421,23 @@
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
     ],
-    title: [
+    title_active: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "24px"],
+      ["letterSpacing", "40px"],
+      ["paddingLeft", "40px"],
+      ["opacity", "0"],
+      ["transition", "all 0.5s"]
+    ],
+    title_active_play_mode: [
+      ["fontFamily", "anurati"],
+      ["fontSize", "24px"],
+      ["letterSpacing", "10px"],
+      ["paddingLeft", "24px"],
+      ["opacity", "100"],
+      ["transition", "all 0.5s"]
+    ],
+    title_inactive: [
       ["fontFamily", "anurati"],
       ["fontSize", "24px"],
       ["letterSpacing", "40px"],
@@ -422,467 +455,169 @@
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
     ],
-    transition_bar: [
-      ["position", "fixed"],
-      ["backgroundColor", palette2("white")],
-      ["top", "50vh"],
-      ["height", "0vh"],
-      ["width", "100vw"],
-      ["transition", "all 0.5s"]
+    title_container: [
+      ["position", "absolute"],
+      ["width", "60vw"],
+      ["height", "60vh"],
+      ["left", "15vw"],
+      ["bottom", "15vh"],
+      ["display", "flex"],
+      ["justifyContent", "center"],
+      ["alignItems", "center"],
+      ["flexDirection", "column"],
+      ["transition", "all 0.5s"],
+      ["borderTop", `1px solid ${palette2("white", 0, 0)}`]
     ],
-    transition_bar_in: [
-      ["top", "50vh"],
-      ["height", "0vh"],
-      ["transition", "all 0.5s"]
-    ],
-    transition_bar_out: [
-      ["top", "45vh"],
+    title_container_play_mode: [
+      ["position", "absolute"],
+      ["width", "90vw"],
       ["height", "10vh"],
-      ["transition", "all 0.5s"]
+      ["left", "5vw"],
+      ["bottom", "0vh"],
+      ["display", "flex"],
+      ["justifyContent", "space-between"],
+      ["alignItems", "center"],
+      ["borderTop", `1px solid ${palette2("white", 0, 0.1)}`],
+      ["flexDirection", "row"],
+      ["transition", "all 0.5s"],
+      ["paddingTop", "0px"]
     ]
   });
-  var useChillSpace = ({
-    onActivation,
-    onDeactivation
-  }) => {
-    const [keypress] = useKeyPress();
+  var useSpace = (space) => {
+    const {name: title} = space;
     const [state, setState] = useProperty("PASSIVE");
     const [container, containerAttrs] = useHtml("div", ["class", css2("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css2("title", "font_big_on_tablet")]);
-    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css2("sub_title")]);
-    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css2("transition_bar")]);
-    const [enterButton, enterButtonAttrs] = useHtml("button", ["class", css2("enter_button")], ["onclick", () => machine("ACTIVATE")]);
-    keypress("Escape", () => machine("DEACTIVATE"));
-    const activate = () => {
-      containerAttrs(["class", css2("container", "container_active")]);
-    };
-    const deactivate = () => {
-      containerAttrs(["class", css2("container", "container_deactive")]);
-    };
-    const slideInAnimation = () => {
-      titleAttrs(["class", css2("title", "title_transition_in", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css2("sub_title", "sub_title_transition_in")]);
-      enterButtonAttrs(["class", css2("enter_button", "enter_button_transition_in")]);
-    };
-    const slideOutAnimation = () => {
-      titleAttrs(["class", css2("title", "font_big_on_tablet", "title_transition_out")]);
-      subtitleAttrs(["class", css2("sub_title", "sub_title_transition_out")]);
-      enterButtonAttrs(["class", css2("enter_button", "enter_button_transition_out")]);
+    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css2("title_container")]);
+    const [header, headerAttrs] = useHtml("div", ["class", css2("title_active", "font_big_on_tablet")]);
+    const [subHeader, subHeaderAttrs] = useHtml("div", ["class", css2("sub_title")]);
+    const [playButton, playButtonAttrs] = useHtml("button", ["class", css2("play_button")], ["onclick", () => machine("ACTIVATE")]);
+    const action = {
+      activate: () => {
+        containerAttrs(["class", css2("container", "container_active")]);
+        titleContainerAttrs(["class", css2("title_container_play_mode")]);
+        headerAttrs(["class", css2("title_active_play_mode")]);
+        subHeaderAttrs(["class", css2("sub_title_active", "sub_title_transition_out")]);
+        playButtonAttrs(["class", css2("play_button_active")]);
+        playButton("\u25A2");
+        return "ACTIVE";
+      },
+      deactivate: () => {
+        containerAttrs(["class", css2("container", "container_deactive")]);
+        titleContainerAttrs(["class", css2("title_container")]);
+        headerAttrs(["class", css2("title_active", "title_transition_in", "font_big_on_tablet")]);
+        subHeaderAttrs(["class", css2("sub_title", "sub_title_transition_in")]);
+        playButtonAttrs(["class", css2("play_button", "play_button_transition_in")]);
+        playButton("\u25B7");
+        return "PASSIVE";
+      },
+      slideIn: () => {
+        headerAttrs(["class", css2("title_active", "title_transition_in", "font_big_on_tablet")]);
+        subHeaderAttrs(["class", css2("sub_title", "sub_title_transition_in")]);
+        playButtonAttrs(["class", css2("play_button", "play_button_transition_in")]);
+        return "PASSIVE";
+      },
+      slideOut: () => {
+        headerAttrs(["class", css2("title_active", "font_big_on_tablet", "title_transition_out")]);
+        subHeaderAttrs(["class", css2("sub_title", "sub_title_transition_out")]);
+        playButtonAttrs(["class", css2("play_button", "play_button_transition_out")]);
+        return "PASSIVE";
+      }
     };
     const machine = (event) => {
-      console.log(event, state());
       switch (state()) {
         case "PASSIVE":
           switch (event) {
             case "SLIDE_IN":
-              slideInAnimation();
+              setState(action.slideIn());
               break;
             case "SLIDE_OUT":
-              slideOutAnimation();
+              setState(action.slideOut());
               break;
             case "ACTIVATE":
-              activate();
-              if (onActivation)
-                onActivation();
-              setState("ACTIVE");
+              setState(action.activate());
               break;
           }
           break;
         case "ACTIVE":
           switch (event) {
             case "DEACTIVATE":
-              deactivate();
-              if (onDeactivation)
-                onDeactivation();
-              setState("PASSIVE");
+              setState(action.deactivate());
               break;
           }
           break;
       }
     };
-    return [container(title("CHILL"), subtitle("SPACE"), enterButton("[ ESC ]"), transitionBar()), machine];
+    return [container(title_container(header(title.toUpperCase()), subHeader("SPACE"), playButton("\u25B7"))), machine];
   };
 
-  // src/app/components/spaces/Deep.ts
-  var [palette3] = usePalette();
-  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
-  var [kf2] = useKeyFrames({
-    fade_in: [
-      [0, "opacity", 0],
-      [100, "opacity", 1]
-    ],
-    fade_out: [
-      [0, "opacity", 1],
-      [100, "opacity", 0]
-    ],
-    container_zoom_width_in: [
-      [0, "width", "90vw"],
-      [100, "width", "100vw"]
-    ],
-    container_zoom_width_out: [
-      [0, "width", "100vw"],
-      [100, "width", "90vw"]
-    ],
-    container_zoom_height_in: [
-      [0, "height", "90vh"],
-      [100, "height", "100vh"]
-    ],
-    container_zoom_height_out: [
-      [0, "height", "100vh"],
-      [100, "height", "90vh"]
-    ]
-  });
-  var [css3] = useCss({
-    container: [
-      ["backgroundColor", palette3("white", 0, 0.05)],
-      ["color", palette3("white")],
-      ["display", "flex"],
-      ["justifyContent", "center"],
-      ["alignItems", "center"],
-      ["width", "90vw"],
-      ["height", "90vh"],
-      ["border", `1px solid ${palette3("white", 0, 0.1)}`],
-      ["flexDirection", "column"]
-    ],
-    container_active: [
-      ["animation", kf2("container_zoom_width_in", "container_zoom_height_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    container_deactive: [
-      ["animation", kf2("container_zoom_width_out", "container_zoom_height_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    enter_button: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"],
-      ["padding", "20px"],
-      ["backgroundColor", palette3("white", 0, 0.01)],
-      ["color", palette3("white")],
-      ["border", `1px dashed ${palette3("white", 0, 0.1)}`],
-      ["cursor", "pointer"],
-      ["letterSpacing", "4px"]
-    ],
-    enter_button_transition_in: [
-      ["animation", kf2("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    enter_button_transition_out: [
-      ["animation", kf2("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    font_big: [["fontSize", "66px"]],
-    sub_title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"]
-    ],
-    sub_title_transition_in: [
-      ["animation", kf2("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    sub_title_transition_out: [
-      ["animation", kf2("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "24px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["opacity", "0"],
-      ["transition", "all 0.5s"]
-    ],
-    title_transition_in: [
-      ["animation", kf2("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    title_transition_out: [
-      ["animation", kf2("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    transition_bar: [
-      ["position", "fixed"],
-      ["backgroundColor", palette3("white")],
-      ["top", "50vh"],
-      ["height", "0vh"],
-      ["width", "100vw"],
-      ["transition", "all 0.5s"]
-    ],
-    transition_bar_in: [
-      ["top", "50vh"],
-      ["height", "0vh"],
-      ["transition", "all 0.5s"]
-    ],
-    transition_bar_out: [
-      ["top", "45vh"],
-      ["height", "10vh"],
-      ["transition", "all 0.5s"]
-    ]
-  });
-  var useDeepSpace = ({
-    onActivation,
-    onDeactivation
-  }) => {
-    const [keypress] = useKeyPress();
-    const [state, setState] = useProperty("PASSIVE");
-    const [container, containerAttrs] = useHtml("div", ["class", css3("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css3("title", "font_big_on_tablet")]);
-    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css3("sub_title")]);
-    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css3("transition_bar")]);
-    const [enterButton, enterButtonAttrs] = useHtml("button", ["class", css3("enter_button")], ["onclick", () => machine("ACTIVATE")]);
-    keypress("Escape", () => machine("DEACTIVATE"));
-    const activate = () => {
-      containerAttrs(["class", css3("container", "container_active")]);
-    };
-    const deactivate = () => {
-      containerAttrs(["class", css3("container", "container_deactive")]);
-    };
-    const slideInAnimation = () => {
-      titleAttrs(["class", css3("title", "title_transition_in", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css3("sub_title", "sub_title_transition_in")]);
-      enterButtonAttrs(["class", css3("enter_button", "enter_button_transition_in")]);
-    };
-    const slideOutAnimation = () => {
-      titleAttrs(["class", css3("title", "font_big_on_tablet", "title_transition_out")]);
-      subtitleAttrs(["class", css3("sub_title", "sub_title_transition_out")]);
-      enterButtonAttrs(["class", css3("enter_button", "enter_button_transition_out")]);
-    };
-    const machine = (event) => {
-      console.log(event, state());
-      switch (state()) {
-        case "PASSIVE":
-          switch (event) {
-            case "SLIDE_IN":
-              slideInAnimation();
-              break;
-            case "SLIDE_OUT":
-              slideOutAnimation();
-              break;
-            case "ACTIVATE":
-              activate();
-              if (onActivation)
-                onActivation();
-              setState("ACTIVE");
-              break;
-          }
-          break;
-        case "ACTIVE":
-          switch (event) {
-            case "DEACTIVATE":
-              deactivate();
-              if (onDeactivation)
-                onDeactivation();
-              setState("PASSIVE");
-              break;
-          }
-          break;
+  // src/domain/data/ChillSpace.ts
+  var ChillSpace_default = {
+    name: "chill",
+    songs: [
+      {
+        artist: "rapT0R",
+        artistLink: "https://soundcloud.com/linttraprecords/sets/black-wolf-beats",
+        songName: "Don't be sad bro",
+        mp3Url: "https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3"
+      },
+      {
+        artist: "rapT0R",
+        artistLink: "https://soundcloud.com/linttraprecords/sets/black-wolf-beats",
+        songName: "Don't be sad bro 2",
+        mp3Url: "https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3"
       }
-    };
-    return [container(title("DEEP"), subtitle("SPACE"), enterButton("[ ESC ]"), transitionBar()), machine];
+    ]
   };
 
-  // src/app/components/spaces/Think.ts
-  var [palette4] = usePalette();
-  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
-  var [kf3] = useKeyFrames({
-    fade_in: [
-      [0, "opacity", 0],
-      [100, "opacity", 1]
-    ],
-    fade_out: [
-      [0, "opacity", 1],
-      [100, "opacity", 0]
-    ],
-    container_zoom_width_in: [
-      [0, "width", "90vw"],
-      [100, "width", "100vw"]
-    ],
-    container_zoom_width_out: [
-      [0, "width", "100vw"],
-      [100, "width", "90vw"]
-    ],
-    container_zoom_height_in: [
-      [0, "height", "90vh"],
-      [100, "height", "100vh"]
-    ],
-    container_zoom_height_out: [
-      [0, "height", "100vh"],
-      [100, "height", "90vh"]
-    ]
-  });
-  var [css4] = useCss({
-    container: [
-      ["backgroundColor", palette4("white", 0, 0.05)],
-      ["color", palette4("white")],
-      ["display", "flex"],
-      ["justifyContent", "center"],
-      ["alignItems", "center"],
-      ["width", "90vw"],
-      ["height", "90vh"],
-      ["border", `1px solid ${palette4("white", 0, 0.1)}`],
-      ["flexDirection", "column"]
-    ],
-    container_active: [
-      ["animation", kf3("container_zoom_width_in", "container_zoom_height_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    container_deactive: [
-      ["animation", kf3("container_zoom_width_out", "container_zoom_height_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    enter_button: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"],
-      ["padding", "20px"],
-      ["backgroundColor", palette4("white", 0, 0.01)],
-      ["color", palette4("white")],
-      ["border", `1px dashed ${palette4("white", 0, 0.1)}`],
-      ["cursor", "pointer"],
-      ["letterSpacing", "4px"]
-    ],
-    enter_button_transition_in: [
-      ["animation", kf3("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    enter_button_transition_out: [
-      ["animation", kf3("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    font_big: [["fontSize", "66px"]],
-    sub_title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "10px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["marginTop", "40px"],
-      ["opacity", "0"]
-    ],
-    sub_title_transition_in: [
-      ["animation", kf3("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    sub_title_transition_out: [
-      ["animation", kf3("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    title: [
-      ["fontFamily", "anurati"],
-      ["fontSize", "24px"],
-      ["letterSpacing", "40px"],
-      ["paddingLeft", "40px"],
-      ["opacity", "0"],
-      ["transition", "all 0.5s"]
-    ],
-    title_transition_in: [
-      ["animation", kf3("fade_in")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    title_transition_out: [
-      ["animation", kf3("fade_out")],
-      ["animationFillMode", "forwards"],
-      ["animationDuration", "0.5s"]
-    ],
-    transition_bar: [
-      ["position", "fixed"],
-      ["backgroundColor", palette4("white")],
-      ["top", "50vh"],
-      ["height", "0vh"],
-      ["width", "100vw"],
-      ["transition", "all 0.5s"]
-    ],
-    transition_bar_in: [
-      ["top", "50vh"],
-      ["height", "0vh"],
-      ["transition", "all 0.5s"]
-    ],
-    transition_bar_out: [
-      ["top", "45vh"],
-      ["height", "10vh"],
-      ["transition", "all 0.5s"]
-    ]
-  });
-  var useThinkSpace = ({
-    onActivation,
-    onDeactivation
-  }) => {
-    const [keypress] = useKeyPress();
-    const [state, setState] = useProperty("PASSIVE");
-    const [container, containerAttrs] = useHtml("div", ["class", css4("container")]);
-    const [title, titleAttrs] = useHtml("div", ["class", css4("title", "font_big_on_tablet")]);
-    const [subtitle, subtitleAttrs] = useHtml("div", ["class", css4("sub_title")]);
-    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css4("transition_bar")]);
-    const [enterButton, enterButtonAttrs] = useHtml("button", ["class", css4("enter_button")], ["onclick", () => machine("ACTIVATE")]);
-    keypress("Escape", () => machine("DEACTIVATE"));
-    const activate = () => {
-      containerAttrs(["class", css4("container", "container_active")]);
-    };
-    const deactivate = () => {
-      containerAttrs(["class", css4("container", "container_deactive")]);
-    };
-    const slideInAnimation = () => {
-      titleAttrs(["class", css4("title", "title_transition_in", "font_big_on_tablet")]);
-      subtitleAttrs(["class", css4("sub_title", "sub_title_transition_in")]);
-      enterButtonAttrs(["class", css4("enter_button", "enter_button_transition_in")]);
-    };
-    const slideOutAnimation = () => {
-      titleAttrs(["class", css4("title", "font_big_on_tablet", "title_transition_out")]);
-      subtitleAttrs(["class", css4("sub_title", "sub_title_transition_out")]);
-      enterButtonAttrs(["class", css4("enter_button", "enter_button_transition_out")]);
-    };
-    const machine = (event) => {
-      console.log(event, state());
-      switch (state()) {
-        case "PASSIVE":
-          switch (event) {
-            case "SLIDE_IN":
-              slideInAnimation();
-              break;
-            case "SLIDE_OUT":
-              slideOutAnimation();
-              break;
-            case "ACTIVATE":
-              activate();
-              if (onActivation)
-                onActivation();
-              setState("ACTIVE");
-              break;
-          }
-          break;
-        case "ACTIVE":
-          switch (event) {
-            case "DEACTIVATE":
-              deactivate();
-              if (onDeactivation)
-                onDeactivation();
-              setState("PASSIVE");
-              break;
-          }
-          break;
+  // src/domain/data/DeepSpace.ts
+  var DeepSpace_default = {
+    name: "deep",
+    songs: [
+      {
+        artist: "rapT0R",
+        artistLink: "https://soundcloud.com/linttraprecords/sets/black-wolf-beats",
+        songName: "Don't be sad bro",
+        mp3Url: "https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3"
+      },
+      {
+        artist: "rapT0R",
+        artistLink: "https://soundcloud.com/linttraprecords/sets/black-wolf-beats",
+        songName: "Don't be sad bro 2",
+        mp3Url: "https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3"
       }
-    };
-    return [container(title("THINK"), subtitle("SPACE"), enterButton("[ ESC ]"), transitionBar()), machine];
+    ]
+  };
+
+  // src/domain/data/ThinkSpace.ts
+  var ThinkSpace_default = {
+    name: "think",
+    songs: [
+      {
+        artist: "rapT0R",
+        artistLink: "https://soundcloud.com/linttraprecords/sets/black-wolf-beats",
+        songName: "Don't be sad bro",
+        mp3Url: "https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3"
+      },
+      {
+        artist: "rapT0R",
+        artistLink: "https://soundcloud.com/linttraprecords/sets/black-wolf-beats",
+        songName: "Don't be sad bro 2",
+        mp3Url: "https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3"
+      }
+    ]
+  };
+
+  // src/app/lib/KeyPress.ts
+  var useKeyPress = () => {
+    const subscriptions = [];
+    document.addEventListener("keyup", (e) => {
+      subscriptions.filter((s) => s.key === e.code).forEach((s) => s.callback());
+    });
+    const sub = (key, callback) => subscriptions.push({
+      key,
+      callback
+    });
+    return [sub];
   };
 
   // src/app/lib/Swipe.ts
@@ -936,69 +671,33 @@
   };
 
   // src/app/pages/Escape.ts
-  var [palette5] = usePalette();
-  var [css5] = useCss({
+  var [palette3] = usePalette();
+  var [css3] = useCss({
     body: [
-      ["backgroundColor", palette5("black")],
+      ["backgroundColor", palette3("black")],
       ["overflow", "hidden"]
     ],
     container: [
       ["width", "100vw"],
       ["height", "100vh"]
-    ],
-    transition_bar: [
-      ["position", "fixed"],
-      ["backgroundColor", palette5("purple", 0, 0.01)],
-      ["top", "-25vh"],
-      ["left", "-25vw"],
-      ["height", "150vh"],
-      ["width", "150vw"],
-      ["transition", "all 0.5s"],
-      ["borderRadius", "100%"]
-    ],
-    transition_bar_in: [
-      ["top", "50vh"],
-      ["left", "50vw"],
-      ["height", "0vw"],
-      ["width", "0vw"],
-      ["transition", "all 0.5s"],
-      ["borderRadius", "100vw"],
-      ["transform", "rotate(720deg)"]
-    ],
-    transition_bar_out: [
-      ["top", "-25vh"],
-      ["left", "-25vw"],
-      ["height", "150vh"],
-      ["width", "150vw"],
-      ["transition", "all 0.5s"]
     ]
   });
   var useEscapePage = (parent) => {
-    useDom("body", ["className", css5("body")]);
+    useDom("body", ["className", css3("body")]);
     const [swipe] = useSwipe();
     const [keypress] = useKeyPress();
+    const [activeSlide, setActiveSlide] = useProperty("THINK");
     const [state, setState] = useProperty("INIT");
-    const [currentSlide, setCurrentSlide] = useProperty("THINK");
-    const [container] = useHtml("div", ["class", css5("container")]);
-    const [transitionBar, transitionBarAttrs] = useHtml("div", ["class", css5("transition_bar")]);
-    const [transitionBar2, transitionBarAttrs2] = useHtml("div", ["class", css5("transition_bar")], ["style", "transition-delay:0.05s"]);
-    const [thinkSpace, thinkMachine] = useThinkSpace({
-      onActivation: () => machine("ESCAPE_TO_THINK_SPACE"),
-      onDeactivation: () => machine("ESCAPE")
-    });
-    const [chillSpace, chillMachine] = useChillSpace({
-      onActivation: () => machine("ESCAPE_TO_CHILL_SPACE"),
-      onDeactivation: () => machine("ESCAPE")
-    });
-    const [deepSpace, deepMachine] = useDeepSpace({
-      onActivation: () => machine("ESCAPE_TO_DEEP_SPACE"),
-      onDeactivation: () => machine("ESCAPE")
-    });
+    const [container] = useHtml("div", ["class", css3("container")]);
+    const [thinkSpace, thinkMachine] = useSpace(ThinkSpace_default);
+    const [chillSpace, chillMachine] = useSpace(ChillSpace_default);
+    const [deepSpace, deepMachine] = useSpace(DeepSpace_default);
     const [slides, slider] = useSlider([
       {name: "DEEP", element: deepSpace},
       {name: "THINK", element: thinkSpace},
       {name: "CHILL", element: chillSpace}
     ], ({slidingIn, slidingOut}) => {
+      setActiveSlide(slidingIn);
       if (slidingOut === "THINK")
         thinkMachine("SLIDE_OUT");
       if (slidingIn === "THINK")
@@ -1011,24 +710,50 @@
         deepMachine("SLIDE_OUT");
       if (slidingIn === "DEEP")
         setTimeout(() => deepMachine("SLIDE_IN"), 750);
-      transitionBarAttrs(["class", css5("transition_bar", "transition_bar_out")]);
-      transitionBarAttrs2(["class", css5("transition_bar", "transition_bar_out")]);
-      setTimeout(() => {
-        transitionBarAttrs(["class", css5("transition_bar", "transition_bar_in")]);
-        transitionBarAttrs2(["class", css5("transition_bar", "transition_bar_in")]);
-      }, 1e3);
-      setCurrentSlide(slidingIn);
     });
     swipe("RIGHT", () => machine("NEXT_SLIDE"));
     swipe("LEFT", () => machine("PREV_SLIDE"));
     keypress("ArrowRight", () => machine("NEXT_SLIDE"));
     keypress("ArrowLeft", () => machine("PREV_SLIDE"));
+    keypress("Escape", () => machine("ESCAPE_OUT_OF_SPACE"));
+    keypress("Space", () => machine("ESCAPE_INTO_SPACE"));
+    const actions = {
+      render() {
+        parent(container(slides));
+        slider("INIT");
+        return "SEARCHING";
+      },
+      enterSpace() {
+        switch (activeSlide()) {
+          case "THINK":
+            thinkMachine("ACTIVATE");
+            return "THINKING";
+          case "CHILL":
+            chillMachine("ACTIVATE");
+            return "CHILLING";
+          case "DEEP":
+            deepMachine("ACTIVATE");
+            return "IN_DEEP";
+        }
+      },
+      escapeSpace() {
+        switch (activeSlide()) {
+          case "THINK":
+            thinkMachine("DEACTIVATE");
+            return "SEARCHING";
+          case "CHILL":
+            chillMachine("DEACTIVATE");
+            return "SEARCHING";
+          case "DEEP":
+            deepMachine("DEACTIVATE");
+            return "SEARCHING";
+        }
+      }
+    };
     const machine = (event = null) => {
       switch (state()) {
         case "INIT":
-          parent(container(slides, transitionBar(), transitionBar2()));
-          slider("INIT");
-          setState("SEARCHING");
+          setState(actions.render());
           break;
         case "SEARCHING":
           switch (event) {
@@ -1038,14 +763,8 @@
             case "PREV_SLIDE":
               slider("PREV");
               break;
-            case "ESCAPE_TO_THINK_SPACE":
-              setState("THINKING");
-              break;
-            case "ESCAPE_TO_CHILL_SPACE":
-              setState("CHILLING");
-              break;
-            case "ESCAPE_TO_DEEP_SPACE":
-              setState("IN_DEEP");
+            case "ESCAPE_INTO_SPACE":
+              setState(actions.enterSpace());
               break;
           }
           break;
@@ -1053,8 +772,8 @@
         case "CHILLING":
         case "IN_DEEP":
           switch (event) {
-            case "ESCAPE":
-              setState("SEARCHING");
+            case "ESCAPE_OUT_OF_SPACE":
+              setState(actions.escapeSpace());
               break;
           }
       }

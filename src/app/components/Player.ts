@@ -1,10 +1,9 @@
-import { songs } from 'src/data';
-import { useAudio } from '../lib/Audio';
-import { useCss } from '../lib/Css';
-import { useHtml } from '../lib/Html';
-import { useKeyPress } from '../lib/KeyPress';
-import { usePalette } from '../lib/Palette';
-import { Meter } from './Meter';
+import { Meter } from '@components/Meter';
+import { songs } from '@domain/types';
+import { useAudio } from '@lib/Audio';
+import { useCss } from '@lib/Css';
+import { useHtml } from '@lib/Html';
+import { usePalette } from '@lib/Palette';
 
 const [palette] = usePalette();
 
@@ -45,19 +44,18 @@ export const Player = (mp3Url: string = songs[0].mp3Url) => {
     } else {
       readings.push(rms);
     }
-    setMeter(Meter(readings));
+    meter(Meter(readings));
   });
-  useKeyPress((key) => {
-    console.log(key);
-    switch (key) {
-      case 'Space':
-        togglePlay();
-        break;
-      case 'Escape':
-        pause();
-        break;
-    }
-  });
+  // useKeyPress((key) => {
+  //   switch (key) {
+  //     case 'Space':
+  //       togglePlay();
+  //       break;
+  //     case 'Escape':
+  //       pause();
+  //       break;
+  //   }
+  // });
   const [btn, setBtn] = useHtml('div', ['class', css('btn')]);
   const [btnText] = useHtml('div', ['class', css('btnText')]);
   const [spacer] = useHtml('div', ['class', css('spacer')]);

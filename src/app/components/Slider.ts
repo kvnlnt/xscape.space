@@ -1,6 +1,6 @@
-import { useCss } from '../lib/Css';
-import { HtmlAttr, useHtml } from '../lib/Html';
-import { usePalette } from '../lib/Palette';
+import { useCss } from '@lib/Css';
+import { HtmlAttr, useHtml } from '@lib/Html';
+import { usePalette } from '@lib/Palette';
 
 const [palette] = usePalette();
 

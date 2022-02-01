@@ -40,6 +40,8 @@ export function useHtml<T extends keyof HTMLElementTagNameMap>(
   let hasRendered = false;
 
   const replace = (...children: HtmlNode[]) => {
+    const attrs: HtmlAttr<T>[] = [];
+    Array.from(container.attributes).forEach((attr) => attrs.push([attr.name as any, attr.value]));
     const newContainer = HTML<T>({ tag, attrs, children });
     container.replaceWith(newContainer);
     container = newContainer;

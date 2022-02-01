@@ -1,6 +1,14 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "paths": {
+      "@lib/*": ["src/app/lib/*"],
+      "@elements/*":["src/app/elements/*"],
+      "@components/*":["src/app/components/*"],
+      "@pages/*":["src/app/pages/*"],
+      "@services/*":["src/services/*"],
+      "@domain/*":["src/domain/*"],
+    },
     "esModuleInterop": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,

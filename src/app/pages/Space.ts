@@ -1,12 +1,12 @@
-import { Player } from '../components/Player';
-import { Logo } from '../elements/Logo';
-import { useCss } from '../lib/Css';
-import { useFont } from '../lib/Fonts';
-import { useHtml } from '../lib/Html';
-import { useKeyFrames } from '../lib/KeyFrames';
-import { useLocalization } from '../lib/Localization';
-import { usePalette } from '../lib/Palette';
-import { useProperty } from '../lib/Property';
+import { Player } from '@components/Player';
+import { Logo } from '@elements/Logo';
+import { useCss } from '@lib/Css';
+import { useFont } from '@lib/Fonts';
+import { useHtml } from '@lib/Html';
+import { useKeyFrames } from '@lib/KeyFrames';
+import { useLocalization } from '@lib/Localization';
+import { usePalette } from '@lib/Palette';
+import { useProperty } from '@lib/Property';
 
 const [l10n] = useLocalization();
 const [palette] = usePalette();
