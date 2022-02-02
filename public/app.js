@@ -301,8 +301,89 @@
     return [getter, setter];
   };
 
-  // src/app/components/Space.ts
+  // src/app/lib/Fonts.ts
+  var Font;
+  (function(Font2) {
+    Font2["arial"] = "Arial";
+    Font2["monospace"] = "Monospace";
+  })(Font || (Font = {}));
+  var useFont = () => {
+    const getter = (font2) => Font[font2];
+    return [getter];
+  };
+
+  // src/app/components/Playlist.ts
   var [palette2] = usePalette();
+  var [font] = useFont();
+  var [css2] = useCss({
+    container: [["display", "none"]],
+    container_active: [
+      ["display", "flex"],
+      ["flexDirection", "column"]
+    ],
+    item: [
+      ["color", palette2("white")],
+      ["padding", "5px"],
+      ["fontFamily", font("monospace")],
+      ["cursor", "pointer"]
+    ],
+    item_song: [
+      ["color", palette2("white")],
+      ["fontFamily", font("monospace")],
+      ["padding", "5px"]
+    ],
+    item_song_active: [
+      ["backgroundColor", palette2("white")],
+      ["color", palette2("black")],
+      ["padding", "5px"]
+    ],
+    item_artist: [
+      ["color", palette2("white", 0, 0.2)],
+      ["fontFamily", font("monospace")],
+      ["fontSize", "10px"]
+    ]
+  });
+  var usePlaylist = ({space}) => {
+    const [state, setState] = useProperty("IDLE");
+    const [container, containerAttrs] = useHtml("div", ["class", css2("container")]);
+    const createItem = (song) => {
+      const [item] = useHtml("div", ["class", css2("item")]);
+      const [item_song] = useHtml("div", ["class", css2("item_song")]);
+      const [item_artist] = useHtml("div", ["class", css2("item_artist")]);
+      return item(item_song(song.songName), item_artist(song.artist));
+    };
+    const actions = {
+      load() {
+        containerAttrs(["class", css2("container_active")]);
+      },
+      unload() {
+        containerAttrs(["class", css2("container")]);
+      }
+    };
+    const machine = (event = null) => {
+      switch (state()) {
+        case "IDLE":
+          switch (event) {
+            case "LOAD":
+              actions.load();
+              setState("READY");
+              break;
+            case "UNLOAD":
+              actions.unload();
+              setState("IDLE");
+              break;
+          }
+      }
+    };
+    const playlist = [
+      container(createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0]), createItem(space.songs[0])),
+      machine
+    ];
+    return playlist;
+  };
+
+  // src/app/components/Space.ts
+  var [palette3] = usePalette();
   useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
   var [kf] = useKeyFrames({
     container_zoom_width_in: [
@@ -330,16 +411,16 @@
       [100, "opacity", 0]
     ]
   });
-  var [css2] = useCss({
+  var [css3] = useCss({
     container: [
-      ["backgroundColor", palette2("white", 0, 0.05)],
-      ["color", palette2("white")],
+      ["backgroundColor", palette3("white", 0, 0.05)],
+      ["color", palette3("white")],
       ["display", "flex"],
       ["justifyContent", "center"],
       ["alignItems", "center"],
       ["width", "90vw"],
       ["height", "90vh"],
-      ["border", `1px solid ${palette2("white", 0, 0.1)}`],
+      ["border", `1px solid ${palette3("white", 0, 0.1)}`],
       ["flexDirection", "column"],
       ["position", "relative"]
     ],
@@ -364,8 +445,8 @@
       ["marginTop", "40px"],
       ["opacity", "0"],
       ["padding", "20px 20px 20px 24px  "],
-      ["backgroundColor", palette2("transparent")],
-      ["color", palette2("white", 0, 0.5)],
+      ["backgroundColor", palette3("transparent")],
+      ["color", palette3("white", 0, 0.5)],
       ["border", `0`],
       ["cursor", "pointer"],
       ["transition", "all 0.5s"]
@@ -376,8 +457,8 @@
       ["marginTop", "0px"],
       ["opacity", "100"],
       ["padding", "20px 20px 20px 24px  "],
-      ["backgroundColor", palette2("transparent")],
-      ["color", palette2("white", 0, 0.5)],
+      ["backgroundColor", palette3("transparent")],
+      ["color", palette3("white", 0, 0.5)],
       ["border", `0`],
       ["cursor", "pointer"],
       ["transition", "all 0.5s"]
@@ -392,6 +473,24 @@
       ["animationFillMode", "forwards"],
       ["animationDuration", "0.5s"]
     ],
+    playlist_container: [
+      ["opacity", "0"],
+      ["transition", "all 0.5s"],
+      ["position", "absolute"],
+      ["left", "5vh"],
+      ["bottom", "50vh"],
+      ["width", "80vw"],
+      ["height", "20vh"]
+    ],
+    playlist_container_active: [
+      ["opacity", "100"],
+      ["transition", "all 0.5s"],
+      ["position", "absolute"],
+      ["left", "5vh"],
+      ["bottom", "15vh"],
+      ["width", "80vw"],
+      ["height", "80vh"]
+    ],
     font_big: [["fontSize", "66px"]],
     sub_title: [
       ["fontFamily", "anurati"],
@@ -405,7 +504,7 @@
     sub_title_active: [
       ["fontFamily", "anurati"],
       ["fontSize", "10px"],
-      ["letterSpacing", "40px"],
+      ["letterSpacing", "4px"],
       ["paddingLeft", "40px"],
       ["marginTop", "0px"],
       ["opacity", "0"],
@@ -466,7 +565,7 @@
       ["alignItems", "center"],
       ["flexDirection", "column"],
       ["transition", "all 0.5s"],
-      ["borderTop", `1px solid ${palette2("white", 0, 0)}`]
+      ["borderTop", `1px solid ${palette3("white", 0, 0)}`]
     ],
     title_container_play_mode: [
       ["position", "absolute"],
@@ -477,50 +576,56 @@
       ["display", "flex"],
       ["justifyContent", "space-between"],
       ["alignItems", "center"],
-      ["borderTop", `1px solid ${palette2("white", 0, 0.1)}`],
+      ["borderTop", `1px solid ${palette3("white", 0, 0.1)}`],
       ["flexDirection", "row"],
       ["transition", "all 0.5s"],
       ["paddingTop", "0px"]
-    ]
+    ],
+    width_30: [["width", "30vw"]]
   });
   var useSpace = (space) => {
     const {name: title} = space;
     const [state, setState] = useProperty("PASSIVE");
-    const [container, containerAttrs] = useHtml("div", ["class", css2("container")]);
-    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css2("title_container")]);
-    const [header, headerAttrs] = useHtml("div", ["class", css2("title_active", "font_big_on_tablet")]);
-    const [subHeader, subHeaderAttrs] = useHtml("div", ["class", css2("sub_title")]);
-    const [playButton, playButtonAttrs] = useHtml("button", ["class", css2("play_button")], ["onclick", () => machine("ACTIVATE")]);
+    const [container, containerAttrs] = useHtml("div", ["class", css3("container")]);
+    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css3("title_container")]);
+    const [header, headerAttrs] = useHtml("div", ["class", css3("title_active", "font_big_on_tablet")]);
+    const [playlist_container, playlistContainerAttrs] = useHtml("div", [
+      "class",
+      css3("playlist_container", "width_30_on_tablet")
+    ]);
+    const [playlist, playlistMachine] = usePlaylist({space});
+    const [subHeader, subHeaderAttrs] = useHtml("div", ["class", css3("sub_title")]);
+    const [playButton, playButtonAttrs] = useHtml("button", ["class", css3("play_button")], ["onclick", () => machine("ACTIVATE")]);
     const action = {
       activate: () => {
-        containerAttrs(["class", css2("container", "container_active")]);
-        titleContainerAttrs(["class", css2("title_container_play_mode")]);
-        headerAttrs(["class", css2("title_active_play_mode")]);
-        subHeaderAttrs(["class", css2("sub_title_active", "sub_title_transition_out")]);
-        playButtonAttrs(["class", css2("play_button_active")]);
+        containerAttrs(["class", css3("container", "container_active")]);
+        titleContainerAttrs(["class", css3("title_container_play_mode")]);
+        headerAttrs(["class", css3("title_active_play_mode")]);
+        subHeaderAttrs(["class", css3("sub_title_active", "sub_title_transition_out")]);
+        playButtonAttrs(["class", css3("play_button_active")]);
         playButton("\u25A2");
-        return "ACTIVE";
+        playlistMachine("LOAD");
+        playlistContainerAttrs(["class", css3("playlist_container_active", "width_30_on_tablet")]);
       },
       deactivate: () => {
-        containerAttrs(["class", css2("container", "container_deactive")]);
-        titleContainerAttrs(["class", css2("title_container")]);
-        headerAttrs(["class", css2("title_active", "title_transition_in", "font_big_on_tablet")]);
-        subHeaderAttrs(["class", css2("sub_title", "sub_title_transition_in")]);
-        playButtonAttrs(["class", css2("play_button", "play_button_transition_in")]);
+        containerAttrs(["class", css3("container", "container_deactive")]);
+        titleContainerAttrs(["class", css3("title_container")]);
+        headerAttrs(["class", css3("title_active", "title_transition_in", "font_big_on_tablet")]);
+        subHeaderAttrs(["class", css3("sub_title", "sub_title_transition_in")]);
+        playButtonAttrs(["class", css3("play_button", "play_button_transition_in")]);
         playButton("\u25B7");
-        return "PASSIVE";
+        playlistMachine("UNLOAD");
+        playlistContainerAttrs(["class", css3("playlist_container")]);
       },
       slideIn: () => {
-        headerAttrs(["class", css2("title_active", "title_transition_in", "font_big_on_tablet")]);
-        subHeaderAttrs(["class", css2("sub_title", "sub_title_transition_in")]);
-        playButtonAttrs(["class", css2("play_button", "play_button_transition_in")]);
-        return "PASSIVE";
+        headerAttrs(["class", css3("title_active", "title_transition_in", "font_big_on_tablet")]);
+        subHeaderAttrs(["class", css3("sub_title", "sub_title_transition_in")]);
+        playButtonAttrs(["class", css3("play_button", "play_button_transition_in")]);
       },
       slideOut: () => {
-        headerAttrs(["class", css2("title_active", "font_big_on_tablet", "title_transition_out")]);
-        subHeaderAttrs(["class", css2("sub_title", "sub_title_transition_out")]);
-        playButtonAttrs(["class", css2("play_button", "play_button_transition_out")]);
-        return "PASSIVE";
+        headerAttrs(["class", css3("title_active", "font_big_on_tablet", "title_transition_out")]);
+        subHeaderAttrs(["class", css3("sub_title", "sub_title_transition_out")]);
+        playButtonAttrs(["class", css3("play_button", "play_button_transition_out")]);
       }
     };
     const machine = (event) => {
@@ -528,26 +633,36 @@
         case "PASSIVE":
           switch (event) {
             case "SLIDE_IN":
-              setState(action.slideIn());
+              action.slideIn();
+              setState("PASSIVE");
               break;
             case "SLIDE_OUT":
-              setState(action.slideOut());
+              action.slideOut();
+              setState("PASSIVE");
               break;
             case "ACTIVATE":
-              setState(action.activate());
+              action.activate();
+              setState("ACTIVE");
               break;
           }
           break;
         case "ACTIVE":
           switch (event) {
             case "DEACTIVATE":
-              setState(action.deactivate());
+              action.deactivate();
+              setState("PASSIVE");
               break;
           }
           break;
       }
     };
-    return [container(title_container(header(title.toUpperCase()), subHeader("SPACE"), playButton("\u25B7"))), machine];
+    setTimeout(() => {
+      machine("ACTIVATE");
+    }, 500);
+    return [
+      container(playlist_container(playlist), title_container(header(title.toUpperCase()), subHeader("SPACE"), playButton("\u25B7"))),
+      machine
+    ];
   };
 
   // src/domain/data/ChillSpace.ts
@@ -671,10 +786,10 @@
   };
 
   // src/app/pages/Escape.ts
-  var [palette3] = usePalette();
-  var [css3] = useCss({
+  var [palette4] = usePalette();
+  var [css4] = useCss({
     body: [
-      ["backgroundColor", palette3("black")],
+      ["backgroundColor", palette4("black")],
       ["overflow", "hidden"]
     ],
     container: [
@@ -683,12 +798,12 @@
     ]
   });
   var useEscapePage = (parent) => {
-    useDom("body", ["className", css3("body")]);
+    useDom("body", ["className", css4("body")]);
     const [swipe] = useSwipe();
     const [keypress] = useKeyPress();
     const [activeSlide, setActiveSlide] = useProperty("THINK");
     const [state, setState] = useProperty("INIT");
-    const [container] = useHtml("div", ["class", css3("container")]);
+    const [container] = useHtml("div", ["class", css4("container")]);
     const [thinkSpace, thinkMachine] = useSpace(ThinkSpace_default);
     const [chillSpace, chillMachine] = useSpace(ChillSpace_default);
     const [deepSpace, deepMachine] = useSpace(DeepSpace_default);

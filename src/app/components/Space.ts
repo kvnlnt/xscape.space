@@ -5,6 +5,7 @@ import { useHtml } from '@lib/Html';
 import { useKeyFrames } from '@lib/KeyFrames';
 import { usePalette } from '@lib/Palette';
 import { useProperty } from '@lib/Property';
+import { usePlaylist } from './Playlist';
 
 const [palette] = usePalette();
 useFontFace('anurati', `url('assets/Anurati-Regular.otf')`);
@@ -98,6 +99,24 @@ const [css] = useCss({
     ['animationFillMode', 'forwards'],
     ['animationDuration', '0.5s'],
   ],
+  playlist_container: [
+    ['opacity', '0'],
+    ['transition', 'all 0.5s'],
+    ['position', 'absolute'],
+    ['left', '5vh'],
+    ['bottom', '50vh'],
+    ['width', '80vw'],
+    ['height', '20vh'],
+  ],
+  playlist_container_active: [
+    ['opacity', '100'],
+    ['transition', 'all 0.5s'],
+    ['position', 'absolute'],
+    ['left', '5vh'],
+    ['bottom', '15vh'],
+    ['width', '80vw'],
+    ['height', '80vh'],
+  ],
   font_big: [['fontSize', '66px']],
   sub_title: [
     ['fontFamily', 'anurati'],
@@ -111,7 +130,7 @@ const [css] = useCss({
   sub_title_active: [
     ['fontFamily', 'anurati'],
     ['fontSize', '10px'],
-    ['letterSpacing', '40px'],
+    ['letterSpacing', '4px'],
     ['paddingLeft', '40px'],
     ['marginTop', '0px'],
     ['opacity', '0'],
@@ -188,6 +207,7 @@ const [css] = useCss({
     ['transition', 'all 0.5s'],
     ['paddingTop', '0px'],
   ],
+  width_30: [['width', '30vw']],
 });
 
 type SpaceStates = 'ACTIVE' | 'PASSIVE';
@@ -200,7 +220,11 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
   const [container, containerAttrs] = useHtml('div', ['class', css('container')]);
   const [title_container, titleContainerAttrs] = useHtml('div', ['class', css('title_container')]);
   const [header, headerAttrs] = useHtml('div', ['class', css('title_active', 'font_big_on_tablet')]);
-  // const [playlist, playlistMachine] = usePlaylist({ space });
+  const [playlist_container, playlistContainerAttrs] = useHtml('div', [
+    'class',
+    css('playlist_container', 'width_30_on_tablet'),
+  ]);
+  const [playlist, playlistMachine] = usePlaylist({ space });
   const [subHeader, subHeaderAttrs] = useHtml('div', ['class', css('sub_title')]);
   const [playButton, playButtonAttrs] = useHtml(
     'button',
@@ -208,7 +232,7 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
     ['onclick', () => machine('ACTIVATE')],
   );
 
-  const action: Record<string, () => SpaceStates> = {
+  const action = {
     activate: () => {
       containerAttrs(['class', css('container', 'container_active')]);
       titleContainerAttrs(['class', css('title_container_play_mode')]);
@@ -216,7 +240,8 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
       subHeaderAttrs(['class', css('sub_title_active', 'sub_title_transition_out')]);
       playButtonAttrs(['class', css('play_button_active')]);
       playButton('▢');
-      return 'ACTIVE';
+      playlistMachine('LOAD');
+      playlistContainerAttrs(['class', css('playlist_container_active', 'width_30_on_tablet')]);
     },
     deactivate: () => {
       containerAttrs(['class', css('container', 'container_deactive')]);
@@ -225,19 +250,18 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
       subHeaderAttrs(['class', css('sub_title', 'sub_title_transition_in')]);
       playButtonAttrs(['class', css('play_button', 'play_button_transition_in')]);
       playButton('▷');
-      return 'PASSIVE';
+      playlistMachine('UNLOAD');
+      playlistContainerAttrs(['class', css('playlist_container')]);
     },
     slideIn: () => {
       headerAttrs(['class', css('title_active', 'title_transition_in', 'font_big_on_tablet')]);
       subHeaderAttrs(['class', css('sub_title', 'sub_title_transition_in')]);
       playButtonAttrs(['class', css('play_button', 'play_button_transition_in')]);
-      return 'PASSIVE';
     },
     slideOut: () => {
       headerAttrs(['class', css('title_active', 'font_big_on_tablet', 'title_transition_out')]);
       subHeaderAttrs(['class', css('sub_title', 'sub_title_transition_out')]);
       playButtonAttrs(['class', css('play_button', 'play_button_transition_out')]);
-      return 'PASSIVE';
     },
   };
 
@@ -247,25 +271,39 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
       case 'PASSIVE':
         switch (event) {
           case 'SLIDE_IN':
-            setState(action.slideIn());
+            action.slideIn();
+            setState('PASSIVE');
             break;
           case 'SLIDE_OUT':
-            setState(action.slideOut());
+            action.slideOut();
+            setState('PASSIVE');
             break;
           case 'ACTIVATE':
-            setState(action.activate());
+            action.activate();
+            setState('ACTIVE');
             break;
         }
         break;
       case 'ACTIVE':
         switch (event) {
           case 'DEACTIVATE':
-            setState(action.deactivate());
+            action.deactivate();
+            setState('PASSIVE');
             break;
         }
         break;
     }
   };
 
-  return [container(title_container(header(title.toUpperCase()), subHeader('SPACE'), playButton('▷'))), machine];
+  setTimeout(() => {
+    machine('ACTIVATE');
+  }, 500);
+
+  return [
+    container(
+      playlist_container(playlist),
+      title_container(header(title.toUpperCase()), subHeader('SPACE'), playButton('▷')),
+    ),
+    machine,
+  ];
 };

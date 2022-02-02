@@ -1,5 +1,6 @@
 enum Font {
   arial = 'Arial',
+  monospace = 'Monospace',
 }
 
 type FontList = keyof typeof Font;
