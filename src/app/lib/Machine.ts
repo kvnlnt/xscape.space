@@ -15,7 +15,6 @@ export const useMachine = <States, Events>(
 
   const pub = (event: Events) => {
     subscriptions.forEach((s) => {
-      console.log(s.state, event, currentState);
       if (s.state === currentState) {
         currentState = s.callback(event);
       }

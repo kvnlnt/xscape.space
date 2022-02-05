@@ -54,6 +54,7 @@ const [css] = useCss({
     ['animation', kf('container_zoom_width_in', 'container_zoom_height_in')],
     ['animationFillMode', 'forwards'],
     ['animationDuration', '0.5s'],
+    ['justifyContent', 'flex-start'],
   ],
   container_deactive: [
     ['animation', kf('container_zoom_width_out', 'container_zoom_height_out')],
@@ -105,17 +106,20 @@ const [css] = useCss({
     ['position', 'absolute'],
     ['left', '5vh'],
     ['bottom', '50vh'],
-    ['width', '80vw'],
+    ['width', '100vw'],
     ['height', '20vh'],
   ],
   playlist_container_active: [
     ['opacity', '100'],
     ['transition', 'all 0.5s'],
     ['position', 'absolute'],
-    ['left', '5vh'],
-    ['bottom', '15vh'],
-    ['width', '80vw'],
-    ['height', '80vh'],
+    ['left', '0vh'],
+    ['top', '0vh'],
+    ['width', '90vw'],
+    ['height', 'calc(90vh - 10vw)'],
+    ['boxSizing', 'border-box'],
+    ['border', '1px solid white'],
+    ['margin', '5vw'],
   ],
   font_big: [['fontSize', '66px']],
   sub_title: [
@@ -294,10 +298,6 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
         break;
     }
   };
-
-  setTimeout(() => {
-    machine('ACTIVATE');
-  }, 500);
 
   return [
     container(

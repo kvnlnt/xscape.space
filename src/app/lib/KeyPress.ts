@@ -1,21 +1,16 @@
-type KeyPressed = 'ArrowLeft' | 'ArrowRight' | 'Escape' | 'Space';
+type KeyPressed = 'ArrowLeft' | 'ArrowRight' | 'ArrowDown' | 'ArrowUp' | 'Escape' | 'Space';
 type Subscription = () => void;
 
 export const useKeyPress = () => {
-  const subscriptions: {
-    key: KeyPressed;
-    callback: Subscription;
-  }[] = [];
+  const subscriptions: Partial<Record<KeyPressed, Subscription>> = {};
 
   document.addEventListener('keyup', (e) => {
-    subscriptions.filter((s) => s.key === e.code).forEach((s) => s.callback());
+    Object.keys(subscriptions)
+      .filter((key: KeyPressed) => key === e.code)
+      .forEach((key: KeyPressed) => subscriptions[key]());
   });
 
-  const sub = (key: KeyPressed, callback: Subscription) =>
-    subscriptions.push({
-      key,
-      callback,
-    });
+  const sub = (key: KeyPressed, callback: Subscription) => (subscriptions[key as KeyPressed] = callback);
 
   return [sub];
 };

@@ -27,7 +27,7 @@ export const useTooltip = ({
   const actions: Record<string, () => TooltipState> = {
     resize() {
       const [trackedEl] = useDom(trackingId);
-      console.log(trackedEl);
+      // console.log(trackedEl);
       return state();
     },
   };

@@ -32,6 +32,13 @@ function HTML<T extends keyof HTMLElementTagNameMap>({ tag, attrs = [], children
   return el;
 }
 
+export function html<T extends keyof HTMLElementTagNameMap>(
+  tag: T,
+  ...attrs: HtmlAttr<T>[]
+): (...children: HtmlNode[]) => HTMLElement {
+  return (...children: HtmlNode[]) => HTML<T>({ tag, attrs, children });
+}
+
 export function useHtml<T extends keyof HTMLElementTagNameMap>(
   tag: T,
   ...attrs: HtmlAttr<T>[]
@@ -58,7 +65,7 @@ export function useHtml<T extends keyof HTMLElementTagNameMap>(
   const updateAttrs = (...attrs: HtmlAttr<T>[]) => {
     attrs.forEach((attr) => {
       const [key, val] = attr;
-      container.setAttribute(key, val as string);
+      if (container) container.setAttribute(key, val as string);
     });
   };
   return [element, updateAttrs];
