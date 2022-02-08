@@ -105,6 +105,9 @@
     });
     return el;
   }
+  function html(tag, ...attrs) {
+    return (...children) => HTML({tag, attrs, children});
+  }
   function useHtml(tag, ...attrs) {
     let container;
     let hasRendered = false;
@@ -304,6 +307,132 @@
     return [getter, setter];
   };
 
+  // src/app/components/Meter.ts
+  var [palette2] = usePalette();
+  var [css2] = useCss({
+    meter: [
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["height", "50px"],
+      ["alignItems", "flex-end"],
+      ["justifyContent", "center"]
+    ],
+    bar: [
+      ["backgroundColor", palette2("purple")],
+      ["marginLeft", "1px"],
+      ["borderRadius", "2px"],
+      ["minHeight", "5px"]
+    ],
+    width_150: [["width", "150px"]],
+    width_400: [["width", "400px"]]
+  });
+  var Meter = (readings) => {
+    const [meter] = useHtml("div", ["class", css2("meter", "width_150", "width_400_on_tablet")]);
+    const bars = readings.map((reading) => {
+      const [bar] = useHtml("div", ["class", css2("bar")], ["style", `height:${reading}%;width:5px;`]);
+      return bar();
+    });
+    return meter(...bars);
+  };
+
+  // src/app/lib/Audio.ts
+  var useAudio = (mp3Url, rmsCallback) => {
+    const [state, setState] = useProperty("INIT");
+    let audioCtx;
+    let audio;
+    const init = () => {
+      audioCtx = new AudioContext();
+      audio = new Audio(mp3Url);
+      audio.crossOrigin = "anonymous";
+      const processor = audioCtx.createScriptProcessor(2048, 1, 1);
+      audio.addEventListener("canplaythrough", function() {
+        const source = audioCtx.createMediaElementSource(audio);
+        source.connect(processor);
+        source.connect(audioCtx.destination);
+        processor.connect(audioCtx.destination);
+      }, false);
+      processor.addEventListener("audioprocess", function(evt) {
+        const input = evt.inputBuffer.getChannelData(0);
+        const len = input.length;
+        let total = 0;
+        let i = 0;
+        let rms;
+        while (i < len)
+          total += Math.abs(input[i++]);
+        rms = Math.sqrt(total / len);
+        if (state() === "PLAYING")
+          rmsCallback(rms * 100);
+      });
+    };
+    const play = () => {
+      if (state() === "INIT")
+        init();
+      setState("PLAYING");
+      audio.play();
+    };
+    const pause = () => {
+      setState("PAUSED");
+      audio.pause();
+    };
+    return {play, pause, state};
+  };
+
+  // src/app/components/Player.ts
+  var [palette3] = usePalette();
+  var [css3] = useCss({
+    player: [
+      ["fontFamily", "monospace"],
+      ["fontSize", "16px"],
+      ["display", "flex"],
+      ["cursor", "pointer"],
+      ["flexDirection", "column"],
+      ["justifyContent", "center"],
+      ["alignItems", "center"]
+    ],
+    btn: [
+      ["color", palette3("white", 0, 0.2)],
+      ["display", "flex"],
+      ["fontSize", "12px"],
+      ["marginTop", "20px"]
+    ],
+    btnText: [["letterSpacing", "4px"]],
+    spacer: [
+      ["padding", "0 10px"],
+      ["display", "inline-block"],
+      ["color", palette3("white", 0, 0.1)]
+    ]
+  });
+  var Player = (mp3Url) => {
+    const [meter] = useHtml("div");
+    const numOfBars = 20;
+    const emptyMeter = Meter(Array(numOfBars).fill(1));
+    const readings = Array(numOfBars).fill(0);
+    const {play, pause, state} = useAudio(mp3Url, (rms) => {
+      if (readings.length >= numOfBars) {
+        readings.shift();
+        readings.push(rms);
+      } else {
+        readings.push(rms);
+      }
+      meter(Meter(readings));
+    });
+    const [btn] = useHtml("div", ["class", css3("btn")]);
+    const [btnText] = useHtml("div", ["class", css3("btnText")]);
+    const [spacer] = useHtml("div", ["class", css3("spacer")]);
+    const togglePlay = () => {
+      if (state() === "PLAYING") {
+        pause();
+        btn(btnText("SPACE"), spacer("|"), btnText("PAUSED"));
+        meter(emptyMeter);
+      } else {
+        play();
+        btn(btnText("SPACE"), spacer("|"), btnText("PLAYING"));
+      }
+    };
+    const [player] = useHtml("div", ["class", css3("player")], ["onclick", togglePlay]);
+    return player(meter(emptyMeter), btn(btnText("SPACE"), spacer("|"), btnText("PLAY")));
+  };
+
   // src/app/lib/Fonts.ts
   var Font;
   (function(Font2) {
@@ -319,24 +448,27 @@
   var useKeyPress = () => {
     const subscriptions = {};
     document.addEventListener("keyup", (e) => {
-      Object.keys(subscriptions).filter((key) => key === e.code).forEach((key) => subscriptions[key]());
+      (subscriptions[e.code] || []).forEach((subscription) => subscription());
     });
-    const sub = (key, callback) => subscriptions[key] = callback;
+    const sub = (key, callback) => {
+      if (!subscriptions.hasOwnProperty(key))
+        subscriptions[key] = [];
+      subscriptions[key].push(callback);
+    };
     return [sub];
   };
 
   // src/app/components/Playlist.ts
-  var [keypress] = useKeyPress();
-  var [palette2] = usePalette();
+  var [palette4] = usePalette();
   var [font] = useFont();
-  var [css2] = useCss({
-    container: [["display", "none"]],
-    container_active: [
+  var [css4] = useCss({
+    playlist: [["display", "none"]],
+    playlist_active: [
       ["display", "flex"],
       ["flexDirection", "column"]
     ],
     item: [
-      ["color", palette2("white")],
+      ["color", palette4("white")],
       ["padding", "5px"],
       ["fontFamily", font("monospace")],
       ["cursor", "pointer"],
@@ -345,35 +477,22 @@
       ["backgroundSize", "cover"],
       ["backgroundRepeat", "no-repeat"],
       ["backgroundPositionX", "-100vw"],
-      ["backgroundImage", `linear-gradient(to right, ${palette2("white")} 100%, ${palette2("transparent")} 0%)`],
+      ["backgroundImage", `linear-gradient(to right, ${palette4("white")} 100%, ${palette4("transparent")} 0%)`],
       ["transition", "all 0.25s"]
     ],
     item_active: [
-      ["backgroundImage", `linear-gradient(to right, ${palette2("white")} 100%, ${palette2("transparent")} 0%)`],
+      ["backgroundImage", `linear-gradient(to right, ${palette4("white")} 100%, ${palette4("transparent")} 0%)`],
       ["backgroundPositionX", "0vw"],
-      ["transition", "all 0.25s"]
+      ["transition", "all 0.25s"],
+      ["color", palette4("black")]
     ],
     item_song: [
-      ["color", palette2("white")],
-      ["fontFamily", font("monospace")],
-      ["padding", "5px"],
-      ["transition", "all 0.5s"]
-    ],
-    item_song_active: [
-      ["color", palette2("black")],
       ["fontFamily", font("monospace")],
       ["padding", "5px"],
       ["transition", "all 0.5s"]
     ],
     item_artist: [
-      ["color", palette2("white", 0, 0.2)],
-      ["fontFamily", font("monospace")],
-      ["fontSize", "10px"],
-      ["marginLeft", "5px"],
-      ["transition", "all 0.5s"]
-    ],
-    item_artist_active: [
-      ["color", palette2("black")],
+      ["color", palette4("black", 50, 1)],
       ["fontFamily", font("monospace")],
       ["fontSize", "10px"],
       ["marginLeft", "5px"],
@@ -381,85 +500,68 @@
     ]
   });
   var usePlaylist = ({space}) => {
-    const [playState, setPlayState] = useProperty("IDLE");
+    const [keypress] = useKeyPress();
+    const [playState, setPlayState] = useProperty("INIT");
     const [songIndex, setSongIndex] = useProperty(0);
-    const [container, containerAttrs] = useHtml("div", ["class", css2("container")]);
-    const createItem = (song, i) => {
-      const [item_song, itemSongAttr] = useHtml("div", [
-        "class",
-        css2("item_song", i === songIndex() ? "item_song_active" : null)
-      ]);
-      const [item_artist, itemArtistAttr] = useHtml("a", ["class", css2("item_artist", i === songIndex() ? "item_artist_active" : null)], ["href", song.artistLink], ["target", "_blank"]);
-      const [item] = useHtml("div", ["class", css2("item", i === songIndex() ? "item_active" : "item_active_on_hover")], [
-        "onmouseover",
-        () => {
-          if (i === songIndex())
-            return;
-          itemArtistAttr(["class", css2("item_artist_active")]);
-          itemSongAttr(["class", css2("item_song_active")]);
-        }
-      ], [
-        "onmouseout",
-        () => {
-          if (i === songIndex())
-            return;
-          itemArtistAttr(["class", css2("item_artist")]);
-          itemSongAttr(["class", css2("item_song")]);
-        }
-      ]);
-      return item(item_song(song.songName), item_artist("@" + song.artist));
+    const [playlist, playlistAttrs] = useHtml("div", ["class", css4("playlist")]);
+    const render = () => {
+      return playlist(...space.songs.map((song, i) => {
+        return html("div", ["class", css4("item", i === songIndex() ? "item_active" : "item_active_on_hover")], ["onclick", () => machine({action: "PLAY", index: i})])(html("div", ["class", css4("item_song")])(song.songName), html("a", ["class", css4("item_artist")], ["href", song.artistLink], ["target", "_blank"])("@" + song.artist));
+      }));
     };
     const actions = {
-      async load() {
-        containerAttrs(["class", css2("container_active")]);
+      init() {
+        playlistAttrs(["class", css4("playlist_active")]);
       },
-      async navNext() {
-        console.log("next");
-        console.log(playState());
+      play(index) {
+        setSongIndex(index);
+        render();
       },
-      async navPrev() {
-        console.log("prev");
-        console.log(playState());
+      playNext() {
+        setSongIndex(songIndex() === space.songs.length - 1 ? 0 : songIndex() + 1);
+        render();
       },
-      async unload() {
-        containerAttrs(["class", css2("container")]);
+      playPrev() {
+        setSongIndex(songIndex() === 0 ? space.songs.length - 1 : songIndex() - 1);
+        render();
+      },
+      quit() {
+        playlistAttrs(["class", css4("playlist")]);
       }
     };
-    keypress("ArrowUp", () => machine("NAV_PREV"));
-    keypress("ArrowDown", () => machine("NAV_NEXT"));
-    const machine = async (event = null) => {
-      console.log(event, playState());
+    keypress("ArrowUp", () => machine({action: "PLAY_PREV"}));
+    keypress("ArrowDown", () => machine({action: "PLAY_NEXT"}));
+    const machine = (reducer) => {
       switch (playState()) {
-        case "IDLE":
-          switch (event) {
-            case "LOAD":
-              await actions.load();
-              setPlayState("PLAYING");
-              break;
-          }
+        case "INIT":
+          actions.init();
+          setPlayState("PLAYING");
           break;
         case "PLAYING":
-          switch (event) {
-            case "NAV_NEXT":
-              await actions.navNext();
+          switch (reducer.action) {
+            case "PLAY":
+              actions.play(reducer.index);
               break;
-            case "NAV_PREV":
-              await actions.navPrev();
+            case "PLAY_NEXT":
+              actions.playNext();
               break;
-            case "UNLOAD":
-              await actions.unload();
-              setPlayState("IDLE");
+            case "PLAY_PREV":
+              actions.playPrev();
+              break;
+            case "QUIT":
+              actions.quit();
+              setPlayState("INIT");
               break;
           }
           break;
       }
     };
-    const playlist = [container(...space.songs.map(createItem)), machine];
-    return playlist;
+    const component = [render(), machine];
+    return component;
   };
 
   // src/app/components/Space.ts
-  var [palette3] = usePalette();
+  var [palette5] = usePalette();
   useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
   var [kf] = useKeyFrames({
     container_zoom_width_in: [
@@ -487,16 +589,16 @@
       [100, "opacity", 0]
     ]
   });
-  var [css3] = useCss({
+  var [css5] = useCss({
     container: [
-      ["backgroundColor", palette3("white", 0, 0.05)],
-      ["color", palette3("white")],
+      ["backgroundColor", palette5("white", 0, 0.05)],
+      ["color", palette5("white")],
       ["display", "flex"],
       ["justifyContent", "center"],
       ["alignItems", "center"],
       ["width", "90vw"],
       ["height", "90vh"],
-      ["border", `1px solid ${palette3("white", 0, 0.1)}`],
+      ["border", `1px solid ${palette5("white", 0, 0.1)}`],
       ["flexDirection", "column"],
       ["position", "relative"]
     ],
@@ -522,8 +624,8 @@
       ["marginTop", "40px"],
       ["opacity", "0"],
       ["padding", "20px 20px 20px 24px  "],
-      ["backgroundColor", palette3("transparent")],
-      ["color", palette3("white", 0, 0.5)],
+      ["backgroundColor", palette5("transparent")],
+      ["color", palette5("white", 0, 0.5)],
       ["border", `0`],
       ["cursor", "pointer"],
       ["transition", "all 0.5s"]
@@ -534,8 +636,8 @@
       ["marginTop", "0px"],
       ["opacity", "100"],
       ["padding", "20px 20px 20px 24px  "],
-      ["backgroundColor", palette3("transparent")],
-      ["color", palette3("white", 0, 0.5)],
+      ["backgroundColor", palette5("transparent")],
+      ["color", palette5("white", 0, 0.5)],
       ["border", `0`],
       ["cursor", "pointer"],
       ["transition", "all 0.5s"]
@@ -568,7 +670,6 @@
       ["width", "90vw"],
       ["height", "calc(90vh - 10vw)"],
       ["boxSizing", "border-box"],
-      ["border", "1px solid white"],
       ["margin", "5vw"]
     ],
     font_big: [["fontSize", "66px"]],
@@ -645,7 +746,7 @@
       ["alignItems", "center"],
       ["flexDirection", "column"],
       ["transition", "all 0.5s"],
-      ["borderTop", `1px solid ${palette3("white", 0, 0)}`]
+      ["borderTop", `1px solid ${palette5("white", 0, 0)}`]
     ],
     title_container_play_mode: [
       ["position", "absolute"],
@@ -656,7 +757,7 @@
       ["display", "flex"],
       ["justifyContent", "space-between"],
       ["alignItems", "center"],
-      ["borderTop", `1px solid ${palette3("white", 0, 0.1)}`],
+      ["borderTop", `1px solid ${palette5("white", 0, 0.1)}`],
       ["flexDirection", "row"],
       ["transition", "all 0.5s"],
       ["paddingTop", "0px"]
@@ -666,46 +767,46 @@
   var useSpace = (space) => {
     const {name: title} = space;
     const [state, setState] = useProperty("PASSIVE");
-    const [container, containerAttrs] = useHtml("div", ["class", css3("container")]);
-    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css3("title_container")]);
-    const [header, headerAttrs] = useHtml("div", ["class", css3("title_active", "font_big_on_tablet")]);
+    const [container, containerAttrs] = useHtml("div", ["class", css5("container")]);
+    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css5("title_container")]);
+    const [header, headerAttrs] = useHtml("div", ["class", css5("title_active", "font_big_on_tablet")]);
     const [playlist_container, playlistContainerAttrs] = useHtml("div", [
       "class",
-      css3("playlist_container", "width_30_on_tablet")
+      css5("playlist_container", "width_30_on_tablet")
     ]);
     const [playlist, playlistMachine] = usePlaylist({space});
-    const [subHeader, subHeaderAttrs] = useHtml("div", ["class", css3("sub_title")]);
-    const [playButton, playButtonAttrs] = useHtml("button", ["class", css3("play_button")], ["onclick", () => machine("ACTIVATE")]);
+    const [subHeader, subHeaderAttrs] = useHtml("div", ["class", css5("sub_title")]);
+    const [playButton, playButtonAttrs] = useHtml("button", ["class", css5("play_button")], ["onclick", () => machine("ACTIVATE")]);
     const action = {
       activate: () => {
-        containerAttrs(["class", css3("container", "container_active")]);
-        titleContainerAttrs(["class", css3("title_container_play_mode")]);
-        headerAttrs(["class", css3("title_active_play_mode")]);
-        subHeaderAttrs(["class", css3("sub_title_active", "sub_title_transition_out")]);
-        playButtonAttrs(["class", css3("play_button_active")]);
+        containerAttrs(["class", css5("container", "container_active")]);
+        titleContainerAttrs(["class", css5("title_container_play_mode")]);
+        headerAttrs(["class", css5("title_active_play_mode")]);
+        subHeaderAttrs(["class", css5("sub_title_active", "sub_title_transition_out")]);
+        playButtonAttrs(["class", css5("play_button_active")]);
         playButton("\u25A2");
-        playlistMachine("LOAD");
-        playlistContainerAttrs(["class", css3("playlist_container_active", "width_30_on_tablet")]);
+        playlistContainerAttrs(["class", css5("playlist_container_active", "width_30_on_tablet")]);
+        playlistMachine({action: "START"});
       },
       deactivate: () => {
-        containerAttrs(["class", css3("container", "container_deactive")]);
-        titleContainerAttrs(["class", css3("title_container")]);
-        headerAttrs(["class", css3("title_active", "title_transition_in", "font_big_on_tablet")]);
-        subHeaderAttrs(["class", css3("sub_title", "sub_title_transition_in")]);
-        playButtonAttrs(["class", css3("play_button", "play_button_transition_in")]);
+        containerAttrs(["class", css5("container", "container_deactive")]);
+        titleContainerAttrs(["class", css5("title_container")]);
+        headerAttrs(["class", css5("title_active", "title_transition_in", "font_big_on_tablet")]);
+        subHeaderAttrs(["class", css5("sub_title", "sub_title_transition_in")]);
+        playButtonAttrs(["class", css5("play_button", "play_button_transition_in")]);
         playButton("\u25B7");
-        playlistMachine("UNLOAD");
-        playlistContainerAttrs(["class", css3("playlist_container")]);
+        playlistContainerAttrs(["class", css5("playlist_container")]);
+        playlistMachine({action: "QUIT"});
       },
       slideIn: () => {
-        headerAttrs(["class", css3("title_active", "title_transition_in", "font_big_on_tablet")]);
-        subHeaderAttrs(["class", css3("sub_title", "sub_title_transition_in")]);
-        playButtonAttrs(["class", css3("play_button", "play_button_transition_in")]);
+        headerAttrs(["class", css5("title_active", "title_transition_in", "font_big_on_tablet")]);
+        subHeaderAttrs(["class", css5("sub_title", "sub_title_transition_in")]);
+        playButtonAttrs(["class", css5("play_button", "play_button_transition_in")]);
       },
       slideOut: () => {
-        headerAttrs(["class", css3("title_active", "font_big_on_tablet", "title_transition_out")]);
-        subHeaderAttrs(["class", css3("sub_title", "sub_title_transition_out")]);
-        playButtonAttrs(["class", css3("play_button", "play_button_transition_out")]);
+        headerAttrs(["class", css5("title_active", "font_big_on_tablet", "title_transition_out")]);
+        subHeaderAttrs(["class", css5("sub_title", "sub_title_transition_out")]);
+        playButtonAttrs(["class", css5("play_button", "play_button_transition_out")]);
       }
     };
     const machine = (event) => {
@@ -737,7 +838,7 @@
       }
     };
     return [
-      container(playlist_container(playlist), title_container(header(title.toUpperCase()), subHeader("SPACE"), playButton("\u25B7"))),
+      container(playlist_container(playlist), title_container(header(title.toUpperCase()), subHeader("SPACE"), Player(space.songs[0].mp3Url), playButton("\u25B7"))),
       machine
     ];
   };
@@ -850,10 +951,10 @@
   };
 
   // src/app/pages/Escape.ts
-  var [palette4] = usePalette();
-  var [css4] = useCss({
+  var [palette6] = usePalette();
+  var [css6] = useCss({
     body: [
-      ["backgroundColor", palette4("black")],
+      ["backgroundColor", palette6("black")],
       ["overflow", "hidden"]
     ],
     container: [
@@ -862,12 +963,12 @@
     ]
   });
   var useEscapePage = (parent) => {
-    useDom("body", ["className", css4("body")]);
+    useDom("body", ["className", css6("body")]);
     const [swipe] = useSwipe();
-    const [keypress2] = useKeyPress();
+    const [keypress] = useKeyPress();
     const [activeSlide, setActiveSlide] = useProperty("THINK");
     const [state, setState] = useProperty("INIT");
-    const [container] = useHtml("div", ["class", css4("container")]);
+    const [container] = useHtml("div", ["class", css6("container")]);
     const [thinkSpace, thinkMachine] = useSpace(ThinkSpace_default);
     const [chillSpace, chillMachine] = useSpace(ChillSpace_default);
     const [deepSpace, deepMachine] = useSpace(DeepSpace_default);
@@ -892,10 +993,10 @@
     });
     swipe("RIGHT", () => machine("NEXT_SLIDE"));
     swipe("LEFT", () => machine("PREV_SLIDE"));
-    keypress2("ArrowRight", () => machine("NEXT_SLIDE"));
-    keypress2("ArrowLeft", () => machine("PREV_SLIDE"));
-    keypress2("Escape", () => machine("ESCAPE_OUT_OF_SPACE"));
-    keypress2("Space", () => machine("ESCAPE_INTO_SPACE"));
+    keypress("ArrowRight", () => machine("NEXT_SLIDE"));
+    keypress("ArrowLeft", () => machine("PREV_SLIDE"));
+    keypress("Escape", () => machine("ESCAPE_OUT_OF_SPACE"));
+    keypress("Space", () => machine("ESCAPE_INTO_SPACE"));
     const actions = {
       render() {
         parent(container(slides));

@@ -8,7 +8,7 @@ const [css] = useCss({
   meter: [
     ['display', 'flex'],
     ['flexDirection', 'row'],
-    ['height', '150px'],
+    ['height', '50px'],
     ['alignItems', 'flex-end'],
     ['justifyContent', 'center'],
   ],

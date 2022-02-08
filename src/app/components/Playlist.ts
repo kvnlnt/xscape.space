@@ -1,18 +1,17 @@
 import { Song, Space } from '@domain/types';
 import { useCss } from '@lib/Css';
 import { useFont } from '@lib/Fonts';
-import { useHtml } from '@lib/Html';
+import { html, useHtml } from '@lib/Html';
 import { useKeyPress } from '@lib/KeyPress';
 import { usePalette } from '@lib/Palette';
 import { useProperty } from '@lib/Property';
 
-const [keypress] = useKeyPress();
 const [palette] = usePalette();
 const [font] = useFont();
 
 const [css] = useCss({
-  container: [['display', 'none']],
-  container_active: [
+  playlist: [['display', 'none']],
+  playlist_active: [
     ['display', 'flex'],
     ['flexDirection', 'column'],
   ],
@@ -33,28 +32,15 @@ const [css] = useCss({
     ['backgroundImage', `linear-gradient(to right, ${palette('white')} 100%, ${palette('transparent')} 0%)`],
     ['backgroundPositionX', '0vw'],
     ['transition', 'all 0.25s'],
+    ['color', palette('black')],
   ],
   item_song: [
-    ['color', palette('white')],
-    ['fontFamily', font('monospace')],
-    ['padding', '5px'],
-    ['transition', 'all 0.5s'],
-  ],
-  item_song_active: [
-    ['color', palette('black')],
     ['fontFamily', font('monospace')],
     ['padding', '5px'],
     ['transition', 'all 0.5s'],
   ],
   item_artist: [
-    ['color', palette('white', 0, 0.2)],
-    ['fontFamily', font('monospace')],
-    ['fontSize', '10px'],
-    ['marginLeft', '5px'],
-    ['transition', 'all 0.5s'],
-  ],
-  item_artist_active: [
-    ['color', palette('black')],
+    ['color', palette('black', 50, 1)],
     ['fontFamily', font('monospace')],
     ['fontSize', '10px'],
     ['marginLeft', '5px'],
@@ -62,102 +48,85 @@ const [css] = useCss({
   ],
 });
 
-type PlayListProps = {
-  space: Space;
-};
-
-type PlayListEvent = 'NAV_NEXT' | 'NAV_PREV' | 'PLAY' | 'LOAD' | 'UNLOAD';
-
-type PlayListState = 'IDLE' | 'PLAYING';
+type PlayListProps = { space: Space };
+type PlayListState = 'INIT' | 'PLAYING';
+type PlayListActions =
+  | { action: 'PLAY_NEXT' }
+  | { action: 'PLAY'; index: number }
+  | { action: 'PLAY_PREV' }
+  | { action: 'START' }
+  | { action: 'QUIT' };
 
 export const usePlaylist = ({ space }: PlayListProps) => {
   // props
-  const [playState, setPlayState] = useProperty<PlayListState>('IDLE');
+  const [keypress] = useKeyPress();
+  const [playState, setPlayState] = useProperty<PlayListState>('INIT');
   const [songIndex, setSongIndex] = useProperty<number>(0);
 
-  // computed props
-
   //elements
-  const [container, containerAttrs] = useHtml('div', ['class', css('container')]);
-  const createItem = (song: Song, i: number) => {
-    const [item_song, itemSongAttr] = useHtml('div', [
-      'class',
-      css('item_song', i === songIndex() ? 'item_song_active' : null),
-    ]);
-    const [item_artist, itemArtistAttr] = useHtml(
-      'a',
-      ['class', css('item_artist', i === songIndex() ? 'item_artist_active' : null)],
-      ['href', song.artistLink],
-      ['target', '_blank'],
+  const [playlist, playlistAttrs] = useHtml('div', ['class', css('playlist')]);
+
+  const render = () => {
+    return playlist(
+      ...space.songs.map((song: Song, i: number) => {
+        return html(
+          'div',
+          ['class', css('item', i === songIndex() ? 'item_active' : 'item_active_on_hover')],
+          ['onclick', () => machine({ action: 'PLAY', index: i })],
+        )(
+          html('div', ['class', css('item_song')])(song.songName),
+          html('a', ['class', css('item_artist')], ['href', song.artistLink], ['target', '_blank'])('@' + song.artist),
+        );
+      }),
     );
-    const [item] = useHtml(
-      'div',
-      ['class', css('item', i === songIndex() ? 'item_active' : 'item_active_on_hover')],
-      [
-        'onmouseover',
-        () => {
-          if (i === songIndex()) return;
-          itemArtistAttr(['class', css('item_artist_active')]);
-          itemSongAttr(['class', css('item_song_active')]);
-        },
-      ],
-      [
-        'onmouseout',
-        () => {
-          if (i === songIndex()) return;
-          itemArtistAttr(['class', css('item_artist')]);
-          itemSongAttr(['class', css('item_song')]);
-        },
-      ],
-    );
-    return item(item_song(song.songName), item_artist('@' + song.artist));
   };
 
   // actions
   const actions = {
-    async load() {
-      containerAttrs(['class', css('container_active')]);
+    init() {
+      playlistAttrs(['class', css('playlist_active')]);
     },
-    async navNext() {
-      console.log('next');
-      console.log(playState());
+    play(index: number) {
+      setSongIndex(index);
+      render();
     },
-    async navPrev() {
-      console.log('prev');
-      console.log(playState());
+    playNext() {
+      setSongIndex(songIndex() === space.songs.length - 1 ? 0 : songIndex() + 1);
+      render();
     },
-    async unload() {
-      containerAttrs(['class', css('container')]);
+    playPrev() {
+      setSongIndex(songIndex() === 0 ? space.songs.length - 1 : songIndex() - 1);
+      render();
+    },
+    quit() {
+      playlistAttrs(['class', css('playlist')]);
     },
   };
 
-  keypress('ArrowUp', () => machine('NAV_PREV'));
-  keypress('ArrowDown', () => machine('NAV_NEXT'));
+  keypress('ArrowUp', () => machine({ action: 'PLAY_PREV' }));
+  keypress('ArrowDown', () => machine({ action: 'PLAY_NEXT' }));
 
   // playState
-  const machine = async (event: PlayListEvent = null) => {
-    console.log(event, playState());
-
+  const machine = (reducer: PlayListActions) => {
     switch (playState()) {
-      case 'IDLE':
-        switch (event) {
-          case 'LOAD':
-            await actions.load();
-            setPlayState('PLAYING');
-            break;
-        }
+      case 'INIT':
+        actions.init();
+        setPlayState('PLAYING');
         break;
       case 'PLAYING':
-        switch (event) {
-          case 'NAV_NEXT':
-            await actions.navNext();
+        switch (reducer.action) {
+          case 'PLAY':
+            actions.play(reducer.index);
             break;
-          case 'NAV_PREV':
-            await actions.navPrev();
+          case 'PLAY_NEXT':
+            actions.playNext();
             break;
-          case 'UNLOAD':
-            await actions.unload();
-            setPlayState('IDLE');
+          case 'PLAY_PREV':
+            actions.playPrev();
+            break;
+          case 'QUIT':
+            actions.quit();
+            setPlayState('INIT');
             break;
         }
         break;
@@ -165,7 +134,6 @@ export const usePlaylist = ({ space }: PlayListProps) => {
   };
 
   // component
-  const playlist: [HTMLElement, (event: PlayListEvent) => void] = [container(...space.songs.map(createItem)), machine];
-
-  return playlist;
+  const component: [HTMLElement, (reducer: PlayListActions) => void] = [render(), machine];
+  return component;
 };

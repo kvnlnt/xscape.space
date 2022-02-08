@@ -1,5 +1,4 @@
 import { Meter } from '@components/Meter';
-import { songs } from '@domain/types';
 import { useAudio } from '@lib/Audio';
 import { useCss } from '@lib/Css';
 import { useHtml } from '@lib/Html';
@@ -10,7 +9,6 @@ const [palette] = usePalette();
 const [css] = useCss({
   player: [
     ['fontFamily', 'monospace'],
-    ['padding', '35px'],
     ['fontSize', '16px'],
     ['display', 'flex'],
     ['cursor', 'pointer'],
@@ -32,8 +30,8 @@ const [css] = useCss({
   ],
 });
 
-export const Player = (mp3Url: string = songs[0].mp3Url) => {
-  const [meter, setMeter] = useHtml('div');
+export const Player = (mp3Url: string) => {
+  const [meter] = useHtml('div');
   const numOfBars = 20;
   const emptyMeter = Meter(Array(numOfBars).fill(1));
   const readings: number[] = Array(numOfBars).fill(0);
@@ -56,18 +54,18 @@ export const Player = (mp3Url: string = songs[0].mp3Url) => {
   //       break;
   //   }
   // });
-  const [btn, setBtn] = useHtml('div', ['class', css('btn')]);
+  const [btn] = useHtml('div', ['class', css('btn')]);
   const [btnText] = useHtml('div', ['class', css('btnText')]);
   const [spacer] = useHtml('div', ['class', css('spacer')]);
 
   const togglePlay = () => {
     if (state() === 'PLAYING') {
       pause();
-      setBtn(btnText('SPACE'), spacer('|'), btnText('PAUSED'));
-      setMeter(emptyMeter);
+      btn(btnText('SPACE'), spacer('|'), btnText('PAUSED'));
+      meter(emptyMeter);
     } else {
       play();
-      setBtn(btnText('SPACE'), spacer('|'), btnText('PLAYING'));
+      btn(btnText('SPACE'), spacer('|'), btnText('PLAYING'));
     }
   };
   const [player] = useHtml('div', ['class', css('player')], ['onclick', togglePlay]);

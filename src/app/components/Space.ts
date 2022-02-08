@@ -5,6 +5,7 @@ import { useHtml } from '@lib/Html';
 import { useKeyFrames } from '@lib/KeyFrames';
 import { usePalette } from '@lib/Palette';
 import { useProperty } from '@lib/Property';
+import { Player } from './Player';
 import { usePlaylist } from './Playlist';
 
 const [palette] = usePalette();
@@ -118,7 +119,6 @@ const [css] = useCss({
     ['width', '90vw'],
     ['height', 'calc(90vh - 10vw)'],
     ['boxSizing', 'border-box'],
-    ['border', '1px solid white'],
     ['margin', '5vw'],
   ],
   font_big: [['fontSize', '66px']],
@@ -244,8 +244,8 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
       subHeaderAttrs(['class', css('sub_title_active', 'sub_title_transition_out')]);
       playButtonAttrs(['class', css('play_button_active')]);
       playButton('▢');
-      playlistMachine('LOAD');
       playlistContainerAttrs(['class', css('playlist_container_active', 'width_30_on_tablet')]);
+      playlistMachine({ action: 'START' });
     },
     deactivate: () => {
       containerAttrs(['class', css('container', 'container_deactive')]);
@@ -254,8 +254,8 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
       subHeaderAttrs(['class', css('sub_title', 'sub_title_transition_in')]);
       playButtonAttrs(['class', css('play_button', 'play_button_transition_in')]);
       playButton('▷');
-      playlistMachine('UNLOAD');
       playlistContainerAttrs(['class', css('playlist_container')]);
+      playlistMachine({ action: 'QUIT' });
     },
     slideIn: () => {
       headerAttrs(['class', css('title_active', 'title_transition_in', 'font_big_on_tablet')]);
@@ -302,7 +302,7 @@ export const useSpace = (space: Space): [HTMLElement, (event: SpaceEvents) => vo
   return [
     container(
       playlist_container(playlist),
-      title_container(header(title.toUpperCase()), subHeader('SPACE'), playButton('▷')),
+      title_container(header(title.toUpperCase()), subHeader('SPACE'), Player(space.songs[0].mp3Url), playButton('▷')),
     ),
     machine,
   ];
