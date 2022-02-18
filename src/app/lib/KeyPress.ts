@@ -11,5 +11,5 @@ export const useKeyPress = () => {
     if (!subscriptions.hasOwnProperty(key)) subscriptions[key] = [];
     subscriptions[key].push(callback);
   };
-  return [sub];
+  return sub;
 };

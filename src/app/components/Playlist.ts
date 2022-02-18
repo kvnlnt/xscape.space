@@ -4,7 +4,6 @@ import { useFont } from '@lib/Fonts';
 import { html, useHtml } from '@lib/Html';
 import { useKeyPress } from '@lib/KeyPress';
 import { usePalette } from '@lib/Palette';
-import { useProperty } from '@lib/Property';
 
 const [palette] = usePalette();
 const [font] = useFont();
@@ -48,30 +47,31 @@ const [css] = useCss({
   ],
 });
 
-type PlayListProps = { space: Space };
+type PlayListProps = { space: Space; callback: (songNumber: number) => void };
 type PlayListState = 'INIT' | 'PLAYING';
-type PlayListActions =
+type PlayListMessages =
   | { action: 'PLAY_NEXT' }
   | { action: 'PLAY'; index: number }
   | { action: 'PLAY_PREV' }
   | { action: 'START' }
   | { action: 'QUIT' };
 
-export const usePlaylist = ({ space }: PlayListProps) => {
+export const usePlaylist = ({ space, callback }: PlayListProps) => {
   // props
-  const [keypress] = useKeyPress();
-  const [playState, setPlayState] = useProperty<PlayListState>('INIT');
-  const [songIndex, setSongIndex] = useProperty<number>(0);
+  const keypress = useKeyPress();
+  let playState: PlayListState = 'INIT';
+  let songIndex: number = 0;
 
   //elements
   const [playlist, playlistAttrs] = useHtml('div', ['class', css('playlist')]);
 
+  // methods
   const render = () => {
     return playlist(
       ...space.songs.map((song: Song, i: number) => {
         return html(
           'div',
-          ['class', css('item', i === songIndex() ? 'item_active' : 'item_active_on_hover')],
+          ['class', css('item', i === songIndex ? 'item_active' : 'item_active_on_hover')],
           ['onclick', () => machine({ action: 'PLAY', index: i })],
         )(
           html('div', ['class', css('item_song')])(song.songName),
@@ -80,53 +80,63 @@ export const usePlaylist = ({ space }: PlayListProps) => {
       }),
     );
   };
-
-  // actions
-  const actions = {
-    init() {
-      playlistAttrs(['class', css('playlist_active')]);
-    },
-    play(index: number) {
-      setSongIndex(index);
-      render();
-    },
-    playNext() {
-      setSongIndex(songIndex() === space.songs.length - 1 ? 0 : songIndex() + 1);
-      render();
-    },
-    playPrev() {
-      setSongIndex(songIndex() === 0 ? space.songs.length - 1 : songIndex() - 1);
-      render();
-    },
-    quit() {
-      playlistAttrs(['class', css('playlist')]);
-    },
+  const init = () => {
+    playlistAttrs(['class', css('playlist_active')]);
+    callback(songIndex);
+  };
+  const play = (index: number) => {
+    songIndex = index;
+    callback(index);
+    render();
+  };
+  const playNext = () => {
+    const newIndex = songIndex === space.songs.length - 1 ? 0 : songIndex + 1;
+    songIndex = newIndex;
+    callback(newIndex);
+    render();
+  };
+  const playPrev = () => {
+    const newIndex = songIndex === 0 ? space.songs.length - 1 : songIndex - 1;
+    songIndex = newIndex;
+    callback(newIndex);
+    render();
+  };
+  const quit = () => {
+    playlistAttrs(['class', css('playlist')]);
   };
 
   keypress('ArrowUp', () => machine({ action: 'PLAY_PREV' }));
   keypress('ArrowDown', () => machine({ action: 'PLAY_NEXT' }));
 
   // playState
-  const machine = (reducer: PlayListActions) => {
-    switch (playState()) {
+  const machine = (message: PlayListMessages) => {
+    switch (playState) {
       case 'INIT':
-        actions.init();
-        setPlayState('PLAYING');
-        break;
+        switch (message.action) {
+          case 'START':
+            init();
+            playState = 'PLAYING';
+            break;
+          default:
+            init();
+            playState = 'PLAYING';
+            break;
+        }
+
       case 'PLAYING':
-        switch (reducer.action) {
+        switch (message.action) {
           case 'PLAY':
-            actions.play(reducer.index);
+            play(message.index);
             break;
           case 'PLAY_NEXT':
-            actions.playNext();
+            playNext();
             break;
           case 'PLAY_PREV':
-            actions.playPrev();
+            playPrev();
             break;
           case 'QUIT':
-            actions.quit();
-            setPlayState('INIT');
+            quit();
+            playState = 'INIT';
             break;
         }
         break;
@@ -134,6 +144,6 @@ export const usePlaylist = ({ space }: PlayListProps) => {
   };
 
   // component
-  const component: [HTMLElement, (reducer: PlayListActions) => void] = [render(), machine];
+  const component: [HTMLElement, (message: PlayListMessages) => void] = [render(), machine];
   return component;
 };

@@ -1,15 +1,15 @@
-import { useProperty } from './Property';
+type AudioState = 'IDLE' | 'PLAYING' | 'PAUSED';
+type AudioMessages = { action: 'PLAY'; mp3Url: string } | { action: 'PAUSE' } | { action: 'STOP' };
 
-type AudioState = 'INIT' | 'PLAYING' | 'PAUSED';
-
-export const useAudio = (mp3Url: string, rmsCallback: (rms: number) => void) => {
-  const [state, setState] = useProperty<AudioState>('INIT');
-  let audioCtx: AudioContext;
+export const useAudio = (rmsCallback: (rms: number) => void) => {
+  let state: AudioState = 'IDLE';
   let audio: HTMLAudioElement;
+  let audioCtx: AudioContext;
 
-  const init = () => {
+  const createAudioElement = (mp3: string, rmsCallback: (rms: number) => void) => {
+    if (audioCtx) audioCtx.close();
     audioCtx = new AudioContext();
-    audio = new Audio(mp3Url);
+    audio = new Audio(mp3);
     audio.crossOrigin = 'anonymous';
     const processor = audioCtx.createScriptProcessor(2048, 1, 1);
 
@@ -32,18 +32,44 @@ export const useAudio = (mp3Url: string, rmsCallback: (rms: number) => void) => 
       let rms: number;
       while (i < len) total += Math.abs(input[i++]);
       rms = Math.sqrt(total / len);
-      if (state() === 'PLAYING') rmsCallback(rms * 100);
+      rmsCallback(rms * 100);
     });
+
+    return audio;
   };
 
-  const play = () => {
-    if (state() === 'INIT') init();
-    setState('PLAYING');
-    audio.play();
+  const machine = (events: AudioMessages) => {
+    switch (state) {
+      case 'IDLE':
+        switch (events.action) {
+          case 'PLAY':
+            state = 'PLAYING';
+            audio = createAudioElement(events.mp3Url, rmsCallback);
+            audio.play();
+            break;
+        }
+        break;
+      case 'PLAYING':
+        switch (events.action) {
+          case 'PAUSE':
+            state = 'PAUSED';
+            audio.pause();
+            break;
+          case 'PLAY':
+            audio = createAudioElement(events.mp3Url, rmsCallback);
+            audio.play();
+          case 'STOP':
+            audioCtx.close();
+        }
+      case 'PAUSED':
+        switch (events.action) {
+          case 'PLAY':
+            state = 'PLAYING';
+            audio.play();
+            break;
+        }
+    }
   };
-  const pause = () => {
-    setState('PAUSED');
-    audio.pause();
-  };
-  return { play, pause, state };
+
+  return machine;
 };

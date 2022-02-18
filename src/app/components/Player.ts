@@ -1,5 +1,4 @@
 import { Meter } from '@components/Meter';
-import { useAudio } from '@lib/Audio';
 import { useCss } from '@lib/Css';
 import { useHtml } from '@lib/Html';
 import { usePalette } from '@lib/Palette';
@@ -35,15 +34,15 @@ export const Player = (mp3Url: string) => {
   const numOfBars = 20;
   const emptyMeter = Meter(Array(numOfBars).fill(1));
   const readings: number[] = Array(numOfBars).fill(0);
-  const { play, pause, state } = useAudio(mp3Url, (rms: number) => {
-    if (readings.length >= numOfBars) {
-      readings.shift();
-      readings.push(rms);
-    } else {
-      readings.push(rms);
-    }
-    meter(Meter(readings));
-  });
+  // const { play, pause, state } = useAudio(mp3Url, (rms: number) => {
+  //   if (readings.length >= numOfBars) {
+  //     readings.shift();
+  //     readings.push(rms);
+  //   } else {
+  //     readings.push(rms);
+  //   }
+  //   meter(Meter(readings));
+  // });
   // useKeyPress((key) => {
   //   switch (key) {
   //     case 'Space':

@@ -1,16 +1,4 @@
-const EN_US = {
-  mainMenuHome: 'Home',
-  mainMenuDocs: 'Docs',
-  mainMenuLearn: 'Learn',
-  mainMenuShowcase: 'Showcase',
-  mainMenuGuestbook: 'Guestbook',
-  screenDocsTitle: 'Docs',
-  screenTitleHome: 'Home',
-  screenTitleComponent: 'Components',
-  screenLearnTitle: 'Learn',
-  screenShowcaseTitle: 'Showcase',
-  screenGuestbookTitle: 'Guestbook',
-} as const;
+const EN_US = {} as const;
 
 type Key = keyof typeof EN_US;
 

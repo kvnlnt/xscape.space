@@ -1,5 +1,5 @@
 import { useSlider } from '@components/Slider';
-import { useSpace } from '@components/Space';
+import { useSpace } from '@components/Space/Space';
 import ChillSpace from '@domain/data/ChillSpace';
 import DeepSpace from '@domain/data/DeepSpace';
 import ThinkSpace from '@domain/data/ThinkSpace';
@@ -8,7 +8,6 @@ import { useDom } from '../lib/Dom';
 import { useHtml } from '../lib/Html';
 import { useKeyPress } from '../lib/KeyPress';
 import { usePalette } from '../lib/Palette';
-import { useProperty } from '../lib/Property';
 import { useSwipe } from '../lib/Swipe';
 
 const [palette] = usePalette();
@@ -26,7 +25,12 @@ const [css] = useCss({
 });
 
 type Slides = 'THINK' | 'CHILL' | 'DEEP';
-type Events = 'SLIDE' | 'ESCAPE_INTO_SPACE' | 'NEXT_SLIDE' | 'PREV_SLIDE' | 'ESCAPE_OUT_OF_SPACE';
+type Messages =
+  | { action: 'SLIDE' }
+  | { action: 'ESCAPE_INTO_SPACE' }
+  | { action: 'NEXT_SLIDE' }
+  | { action: 'PREV_SLIDE' }
+  | { action: 'ESCAPE_OUT_OF_SPACE' };
 type States = 'INIT' | 'SEARCHING' | 'THINKING' | 'CHILLING' | 'IN_DEEP';
 
 export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => void) => {
@@ -34,15 +38,24 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
 
   // props
   const [swipe] = useSwipe();
-  const [keypress] = useKeyPress();
-  const [activeSlide, setActiveSlide] = useProperty<Slides>('THINK');
-  const [state, setState] = useProperty<States>('INIT');
+  const keypress = useKeyPress();
+  let activeSlide: Slides = 'THINK';
+  let state: States = 'INIT';
   const [container] = useHtml('div', ['class', css('container')]);
 
   // components
-  const [thinkSpace, thinkMachine] = useSpace(ThinkSpace);
-  const [chillSpace, chillMachine] = useSpace(ChillSpace);
-  const [deepSpace, deepMachine] = useSpace(DeepSpace);
+  const [thinkSpace, thinkMachine] = useSpace({
+    space: ThinkSpace,
+    onEscape: () => machine({ action: 'ESCAPE_INTO_SPACE' }),
+  });
+  const [chillSpace, chillMachine] = useSpace({
+    space: ChillSpace,
+    onEscape: () => machine({ action: 'ESCAPE_INTO_SPACE' }),
+  });
+  const [deepSpace, deepMachine] = useSpace({
+    space: DeepSpace,
+    onEscape: () => machine({ action: 'ESCAPE_INTO_SPACE' }),
+  });
 
   const [slides, slider] = useSlider<Slides>(
     [
@@ -51,67 +64,68 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
       { name: 'CHILL', element: chillSpace },
     ],
     ({ slidingIn, slidingOut }) => {
-      setActiveSlide(slidingIn);
-      if (slidingOut === 'THINK') thinkMachine('SLIDE_OUT');
-      if (slidingIn === 'THINK') setTimeout(() => thinkMachine('SLIDE_IN'), 750);
-      if (slidingOut === 'CHILL') chillMachine('SLIDE_OUT');
-      if (slidingIn === 'CHILL') setTimeout(() => chillMachine('SLIDE_IN'), 750);
-      if (slidingOut === 'DEEP') deepMachine('SLIDE_OUT');
-      if (slidingIn === 'DEEP') setTimeout(() => deepMachine('SLIDE_IN'), 750);
+      activeSlide = slidingIn;
+      if (slidingOut === 'THINK') thinkMachine({ action: 'SLIDE_OUT' });
+      if (slidingIn === 'THINK') setTimeout(() => thinkMachine({ action: 'SLIDE_IN' }), 750);
+      if (slidingOut === 'CHILL') chillMachine({ action: 'SLIDE_OUT' });
+      if (slidingIn === 'CHILL') setTimeout(() => chillMachine({ action: 'SLIDE_IN' }), 750);
+      if (slidingOut === 'DEEP') deepMachine({ action: 'SLIDE_OUT' });
+      if (slidingIn === 'DEEP') setTimeout(() => deepMachine({ action: 'SLIDE_IN' }), 750);
     },
   );
 
   // events
-  swipe('RIGHT', () => machine('NEXT_SLIDE'));
-  swipe('LEFT', () => machine('PREV_SLIDE'));
-  keypress('ArrowRight', () => machine('NEXT_SLIDE'));
-  keypress('ArrowLeft', () => machine('PREV_SLIDE'));
-  keypress('Escape', () => machine('ESCAPE_OUT_OF_SPACE'));
-  keypress('Space', () => machine('ESCAPE_INTO_SPACE'));
+  swipe('RIGHT', () => machine({ action: 'NEXT_SLIDE' }));
+  swipe('LEFT', () => machine({ action: 'PREV_SLIDE' }));
+  keypress('ArrowRight', () => machine({ action: 'NEXT_SLIDE' }));
+  keypress('ArrowLeft', () => machine({ action: 'PREV_SLIDE' }));
+  keypress('Escape', () => machine({ action: 'ESCAPE_OUT_OF_SPACE' }));
+  keypress('Space', () => machine({ action: 'ESCAPE_INTO_SPACE' }));
 
-  // actions
-  const actions: Record<string, () => States> = {
-    render() {
-      parent(container(slides));
-      slider('INIT');
-      return 'SEARCHING';
-    },
-    enterSpace() {
-      switch (activeSlide()) {
-        case 'THINK':
-          thinkMachine('ACTIVATE');
-          return 'THINKING';
-        case 'CHILL':
-          chillMachine('ACTIVATE');
-          return 'CHILLING';
-        case 'DEEP':
-          deepMachine('ACTIVATE');
-          return 'IN_DEEP';
-      }
-    },
-    escapeSpace() {
-      switch (activeSlide()) {
-        case 'THINK':
-          thinkMachine('DEACTIVATE');
-          return 'SEARCHING';
-        case 'CHILL':
-          chillMachine('DEACTIVATE');
-          return 'SEARCHING';
-        case 'DEEP':
-          deepMachine('DEACTIVATE');
-          return 'SEARCHING';
-      }
-    },
+  // message
+  const render = () => {
+    parent(container(slides));
+    slider('INIT');
+  };
+
+  const enterSpace = () => {
+    switch (activeSlide) {
+      case 'THINK':
+        thinkMachine({ action: 'ACTIVATE' });
+        break;
+      case 'CHILL':
+        chillMachine({ action: 'ACTIVATE' });
+        break;
+      case 'DEEP':
+        deepMachine({ action: 'ACTIVATE' });
+        break;
+    }
+  };
+
+  const escapeSpace = () => {
+    switch (activeSlide) {
+      case 'THINK':
+        thinkMachine({ action: 'DEACTIVATE' });
+        break;
+      case 'CHILL':
+        chillMachine({ action: 'DEACTIVATE' });
+        break;
+      case 'DEEP':
+        deepMachine({ action: 'DEACTIVATE' });
+        break;
+    }
   };
 
   // state
-  const machine = (event: Events = null) => {
-    switch (state()) {
+  const machine = (message: Messages = null) => {
+    console.log('escape', message, state);
+    switch (state) {
       case 'INIT':
-        setState(actions.render());
+        render();
+        state = 'SEARCHING';
         break;
       case 'SEARCHING':
-        switch (event) {
+        switch (message.action) {
           case 'NEXT_SLIDE':
             slider('NEXT');
             break;
@@ -119,16 +133,20 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
             slider('PREV');
             break;
           case 'ESCAPE_INTO_SPACE':
-            setState(actions.enterSpace());
+            enterSpace();
+            if (activeSlide === 'THINK') state = 'THINKING';
+            if (activeSlide === 'CHILL') state = 'CHILLING';
+            if (activeSlide === 'DEEP') state = 'IN_DEEP';
             break;
         }
         break;
       case 'THINKING':
       case 'CHILLING':
       case 'IN_DEEP':
-        switch (event) {
+        switch (message.action) {
           case 'ESCAPE_OUT_OF_SPACE':
-            setState(actions.escapeSpace());
+            escapeSpace();
+            state = 'SEARCHING';
             break;
         }
     }
