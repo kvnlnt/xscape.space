@@ -1,28 +1,5 @@
-import { useCss } from '@lib/Css';
 import { HtmlAttr, useHtml } from '@lib/Html';
-import { usePalette } from '@lib/Palette';
-
-const [palette] = usePalette();
-
-const [css] = useCss({
-  container: [
-    ['display', 'flex'],
-    ['justifyContent', 'center'],
-    ['alignItems', 'center'],
-    ['height', '100vh'],
-    ['width', '100vw'],
-    ['position', 'relative'],
-    ['overflow', 'hidden'],
-  ],
-  slider_container: [
-    ['display', 'flex'],
-    ['justifyContent', 'center'],
-    ['alignItems', 'center'],
-    ['width', '100vw'],
-    ['height', '100vh'],
-    ['position', 'absolute'],
-  ],
-});
+import { css } from './Slider.css';
 
 type ViewEvent = 'INIT' | 'NEXT' | 'PREV';
 type SlideAttrSetter = (...attrs: HtmlAttr<'div'>[]) => void;

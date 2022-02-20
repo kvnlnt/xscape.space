@@ -1,10 +1,10 @@
 import { useCss } from '@lib/Css';
-import { useFontFace } from '@lib/FontFace';
+import { useFont } from '@lib/Font';
 import { useKeyFrames } from '@lib/KeyFrames';
 import { usePalette } from '@lib/Palette';
 
 const [palette] = usePalette();
-useFontFace('anurati', `url('assets/Anurati-Regular.otf')`);
+const font = useFont();
 
 const [kf] = useKeyFrames({
   container_zoom_width_in: [
@@ -63,7 +63,7 @@ const [css] = useCss({
     ['left', '10vw'],
   ],
   play_button: [
-    ['fontFamily', 'anurati'],
+    ['fontFamily', font('arial')],
     ['fontSize', '5vh'],
     ['marginTop', '40px'],
     ['opacity', '0'],
@@ -75,7 +75,7 @@ const [css] = useCss({
     ['transition', 'all 0.5s'],
   ],
   play_button_active: [
-    ['fontFamily', 'anurati'],
+    ['fontFamily', font('arial')],
     ['fontSize', '3vh'],
     ['marginTop', '0px'],
     ['opacity', '100'],
@@ -127,7 +127,7 @@ const [css] = useCss({
     ['opacity', 0],
   ],
   title_active: [
-    ['fontFamily', 'anurati'],
+    ['fontFamily', font('arial')],
     ['fontSize', '24px'],
     ['letterSpacing', '40px'],
     ['paddingLeft', '40px'],
@@ -136,7 +136,7 @@ const [css] = useCss({
     ['marginBottom', '50px'],
   ],
   title_active_play_mode: [
-    ['fontFamily', 'anurati'],
+    ['fontFamily', font('arial')],
     ['fontSize', '0px'],
     ['letterSpacing', '10px'],
     ['paddingLeft', '0px'],
@@ -145,7 +145,7 @@ const [css] = useCss({
     ['marginBottom', '0px'],
   ],
   title_inactive: [
-    ['fontFamily', 'anurati'],
+    ['fontFamily', font('arial')],
     ['fontSize', '24px'],
     ['letterSpacing', '40px'],
     ['paddingLeft', '40px'],

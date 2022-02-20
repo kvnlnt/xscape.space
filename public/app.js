@@ -18,6 +18,59 @@
     return [setHtml, setAttrs];
   }
 
+  // src/app/lib/Html.ts
+  function HTML({tag, attrs = [], children = []}) {
+    const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
+    attrs.forEach(([k, v]) => {
+      if (typeof v === "function") {
+        el.addEventListener(k.substring(2, k.length), (e) => v(e));
+      } else if (typeof v === "boolean") {
+        if (v === true)
+          el.setAttribute(k, "");
+      } else {
+        if (v)
+          el.setAttribute(k, v.toString());
+      }
+    });
+    children.forEach((child) => {
+      if (child instanceof Node)
+        el.appendChild(child);
+      if (typeof child === "string" || typeof child === "number")
+        el.innerHTML += child;
+    });
+    return el;
+  }
+  function html(tag, ...attrs) {
+    return (...children) => HTML({tag, attrs, children});
+  }
+  function useHtml(tag, ...attrs) {
+    let container;
+    let hasRendered = false;
+    const replace = (...children) => {
+      const attrs2 = [];
+      Array.from(container.attributes).forEach((attr) => attrs2.push([attr.name, attr.value]));
+      const newContainer = HTML({tag, attrs: attrs2, children});
+      container.replaceWith(newContainer);
+      container = newContainer;
+      return container;
+    };
+    const element = (...children) => {
+      if (hasRendered)
+        return replace(...children);
+      container = HTML({tag, attrs, children});
+      hasRendered = true;
+      return container;
+    };
+    const updateAttrs = (...attrs2) => {
+      attrs2.forEach((attr) => {
+        const [key, val] = attr;
+        if (container)
+          container.setAttribute(key, val);
+      });
+    };
+    return [element, updateAttrs];
+  }
+
   // src/app/lib/Css.ts
   var Breakpoints;
   (function(Breakpoints2) {
@@ -83,85 +136,7 @@
     return [getter, setter];
   };
 
-  // src/app/lib/Html.ts
-  function HTML({tag, attrs = [], children = []}) {
-    const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
-    attrs.forEach(([k, v]) => {
-      if (typeof v === "function") {
-        el.addEventListener(k.substring(2, k.length), (e) => v(e));
-      } else if (typeof v === "boolean") {
-        if (v === true)
-          el.setAttribute(k, "");
-      } else {
-        if (v)
-          el.setAttribute(k, v.toString());
-      }
-    });
-    children.forEach((child) => {
-      if (child instanceof Node)
-        el.appendChild(child);
-      if (typeof child === "string" || typeof child === "number")
-        el.innerHTML += child;
-    });
-    return el;
-  }
-  function html(tag, ...attrs) {
-    return (...children) => HTML({tag, attrs, children});
-  }
-  function useHtml(tag, ...attrs) {
-    let container;
-    let hasRendered = false;
-    const replace = (...children) => {
-      const attrs2 = [];
-      Array.from(container.attributes).forEach((attr) => attrs2.push([attr.name, attr.value]));
-      const newContainer = HTML({tag, attrs: attrs2, children});
-      container.replaceWith(newContainer);
-      container = newContainer;
-      return container;
-    };
-    const element = (...children) => {
-      if (hasRendered)
-        return replace(...children);
-      container = HTML({tag, attrs, children});
-      hasRendered = true;
-      return container;
-    };
-    const updateAttrs = (...attrs2) => {
-      attrs2.forEach((attr) => {
-        const [key, val] = attr;
-        if (container)
-          container.setAttribute(key, val);
-      });
-    };
-    return [element, updateAttrs];
-  }
-
-  // src/app/lib/Palette.ts
-  var Colors = {
-    black: [0, 0, 5],
-    brown: [44, 11, 14],
-    red: [0, 100, 50],
-    blue: [240, 100, 50],
-    yellow: [55, 100, 50],
-    green: [118, 100, 50],
-    purple: [270, 100, 50],
-    orange: [30, 100, 50],
-    transparent: "transparent",
-    white: [0, 0, 100]
-  };
-  var usePalette = () => {
-    const getter = (color, adjustLightness = 0, opacity = 1) => {
-      if (color === "transparent")
-        return color;
-      const [h, s, l] = Colors[color];
-      const hsla = `hsla(${h}deg,${s}%,${l + adjustLightness}%,${opacity})`;
-      return hsla;
-    };
-    return [getter];
-  };
-
-  // src/app/components/Slider.ts
-  var [palette] = usePalette();
+  // src/app/components/Slider.css.ts
   var [css] = useCss({
     container: [
       ["display", "flex"],
@@ -181,6 +156,8 @@
       ["position", "absolute"]
     ]
   });
+
+  // src/app/components/Slider.ts
   var useSlider = (slides, cb) => {
     const [container] = useHtml("div", ["class", css("container")]);
     const createSlide = ({name, element}) => {
@@ -227,83 +204,6 @@
     return [container(...slideMap.map(([slide2]) => slide2)), machine];
   };
 
-  // src/app/lib/Audio.ts
-  var useAudio = (rmsCallback) => {
-    let state = "IDLE";
-    let audio;
-    let audioCtx;
-    const createAudioElement = (mp3, rmsCallback2) => {
-      if (audioCtx)
-        audioCtx.close();
-      audioCtx = new AudioContext();
-      audio = new Audio(mp3);
-      audio.crossOrigin = "anonymous";
-      const processor = audioCtx.createScriptProcessor(2048, 1, 1);
-      audio.addEventListener("canplaythrough", function() {
-        const source = audioCtx.createMediaElementSource(audio);
-        source.connect(processor);
-        source.connect(audioCtx.destination);
-        processor.connect(audioCtx.destination);
-      }, false);
-      processor.addEventListener("audioprocess", function(evt) {
-        const input = evt.inputBuffer.getChannelData(0);
-        const len = input.length;
-        let total = 0;
-        let i = 0;
-        let rms;
-        while (i < len)
-          total += Math.abs(input[i++]);
-        rms = Math.sqrt(total / len);
-        rmsCallback2(rms * 100);
-      });
-      return audio;
-    };
-    const machine = (events) => {
-      switch (state) {
-        case "IDLE":
-          switch (events.action) {
-            case "PLAY":
-              state = "PLAYING";
-              audio = createAudioElement(events.mp3Url, rmsCallback);
-              audio.play();
-              break;
-          }
-          break;
-        case "PLAYING":
-          switch (events.action) {
-            case "PAUSE":
-              state = "PAUSED";
-              audio.pause();
-              break;
-            case "PLAY":
-              audio = createAudioElement(events.mp3Url, rmsCallback);
-              audio.play();
-            case "STOP":
-              audioCtx.close();
-          }
-        case "PAUSED":
-          switch (events.action) {
-            case "PLAY":
-              state = "PLAYING";
-              audio.play();
-              break;
-          }
-      }
-    };
-    return machine;
-  };
-
-  // src/app/lib/Fonts.ts
-  var Font;
-  (function(Font2) {
-    Font2["arial"] = "Arial";
-    Font2["monospace"] = "Monospace";
-  })(Font || (Font = {}));
-  var useFont = () => {
-    const getter = (font2) => Font[font2];
-    return [getter];
-  };
-
   // src/app/lib/KeyPress.ts
   var useKeyPress = () => {
     const subscriptions = {};
@@ -318,9 +218,44 @@
     return sub;
   };
 
-  // src/app/components/Playlist.ts
-  var [palette2] = usePalette();
-  var [font] = useFont();
+  // src/app/lib/Font.ts
+  var Font;
+  (function(Font2) {
+    Font2["arial"] = "Arial";
+    Font2["monospace"] = "Monospace";
+  })(Font || (Font = {}));
+  var useFont = () => {
+    const getter = (font3) => Font[font3];
+    return getter;
+  };
+
+  // src/app/lib/Palette.ts
+  var Colors = {
+    black: [0, 0, 5],
+    brown: [44, 11, 14],
+    red: [0, 100, 50],
+    blue: [240, 100, 50],
+    yellow: [55, 100, 50],
+    green: [118, 100, 50],
+    purple: [270, 100, 50],
+    orange: [30, 100, 50],
+    transparent: "transparent",
+    white: [0, 0, 100]
+  };
+  var usePalette = () => {
+    const getter = (color, adjustLightness = 0, opacity = 1) => {
+      if (color === "transparent")
+        return color;
+      const [h, s, l] = Colors[color];
+      const hsla = `hsla(${h}deg,${s}%,${l + adjustLightness}%,${opacity})`;
+      return hsla;
+    };
+    return [getter];
+  };
+
+  // src/app/components/Playlist.styles.ts
+  var [palette] = usePalette();
+  var font = useFont();
   var [css2] = useCss({
     playlist: [["display", "none"]],
     playlist_active: [
@@ -328,7 +263,7 @@
       ["flexDirection", "column"]
     ],
     item: [
-      ["color", palette2("white")],
+      ["color", palette("white")],
       ["padding", "5px"],
       ["fontFamily", font("monospace")],
       ["cursor", "pointer"],
@@ -337,14 +272,14 @@
       ["backgroundSize", "cover"],
       ["backgroundRepeat", "no-repeat"],
       ["backgroundPositionX", "-100vw"],
-      ["backgroundImage", `linear-gradient(to right, ${palette2("white")} 100%, ${palette2("transparent")} 0%)`],
+      ["backgroundImage", `linear-gradient(to right, ${palette("white")} 100%, ${palette("transparent")} 0%)`],
       ["transition", "all 0.25s"]
     ],
     item_active: [
-      ["backgroundImage", `linear-gradient(to right, ${palette2("white")} 100%, ${palette2("transparent")} 0%)`],
+      ["backgroundImage", `linear-gradient(to right, ${palette("white")} 100%, ${palette("transparent")} 0%)`],
       ["backgroundPositionX", "0vw"],
       ["transition", "all 0.25s"],
-      ["color", palette2("black")]
+      ["color", palette("black")]
     ],
     item_song: [
       ["fontFamily", font("monospace")],
@@ -352,13 +287,15 @@
       ["transition", "all 0.5s"]
     ],
     item_artist: [
-      ["color", palette2("black", 50, 1)],
+      ["color", palette("black", 50, 1)],
       ["fontFamily", font("monospace")],
       ["fontSize", "10px"],
       ["marginLeft", "5px"],
       ["transition", "all 0.5s"]
     ]
   });
+
+  // src/app/components/Playlist.ts
   var usePlaylist = ({space, callback}) => {
     const keypress = useKeyPress();
     let playState = "INIT";
@@ -431,108 +368,7 @@
     return component;
   };
 
-  // src/app/components/Spectralizer.ts
-  var [palette3] = usePalette();
-  var [css3] = useCss({
-    spectralizer: [
-      ["display", "flex"],
-      ["flexDirection", "row"],
-      ["alignItems", "center"],
-      ["justifyContent", "center"],
-      ["height", "100%"],
-      ["cursor", "pointer"]
-    ],
-    bar_bg: [
-      ["backgroundColor", palette3("white", 0, 0.02)],
-      ["marginLeft", "5px"],
-      ["borderRadius", "7px"],
-      ["display", "flex"],
-      ["flexDirection", "row"],
-      ["alignItems", "center"],
-      ["justifyContent", "center"],
-      ["height", "100%"],
-      ["width", "5px"]
-    ],
-    bar: [
-      ["backgroundColor", palette3("purple")],
-      ["borderRadius", "7px"],
-      ["width", "100%"],
-      ["transition", "all 0.10s"],
-      ["height", "0%"]
-    ]
-  });
-  var useSpectralizer = ({
-    state = "IDLE"
-  }) => {
-    const [spectralizer] = useHtml("div", ["class", css3("spectralizer")], ["onmouseenter", () => machine({action: "HOVER_OVER"})], ["onmouseleave", () => machine({action: "HOVER_OUT"})]);
-    let viewState = state;
-    let wave = [0, 10, 20, 30, 40, 70, 90, 90, 70, 40, 30, 20, 10, 0];
-    let waveInterval;
-    let streamWave = [0, 10, 20, 30, 40, 70, 90, 90, 70, 40, 30, 20, 10, 0];
-    const playButton = [0, 0, 0, 0, 50, 40, 30, 20, 10, 4, 0, 0, 0, 0];
-    const off = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
-    const barBgs = off.map(() => useHtml("div", ["class", css3("bar_bg")]));
-    const bars = off.map((i) => useHtml("div", ["class", css3("bar")], ["style", `height:${i}%;`]));
-    const render = () => spectralizer(...barBgs.map(([barBg], bar) => barBg(bars[bar][0]())));
-    const shuffle = (ary) => ary.slice(0).sort(() => Math.random() - 0.5);
-    const animateIn = () => {
-      playButton.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
-    };
-    const animateOut = () => {
-      off.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
-    };
-    const animateWave = () => {
-      wave = shuffle(wave);
-      wave.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
-    };
-    const stream = (rms) => {
-      streamWave.shift();
-      streamWave.push(rms);
-      streamWave.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
-    };
-    const reset = () => {
-      playButton.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
-    };
-    const machine = (action) => {
-      switch (viewState) {
-        case "IDLE":
-          switch (action.action) {
-            case "ANIMATE_IN":
-              animateIn();
-              viewState = "STREAMING";
-              break;
-            case "ANIMATE_OUT":
-              animateOut();
-              break;
-            case "PLAY":
-              viewState = "STREAMING";
-              break;
-            case "HOVER_OVER":
-              waveInterval = setInterval(animateWave, 20);
-              break;
-            case "HOVER_OUT":
-              clearInterval(waveInterval);
-              animateIn();
-              break;
-          }
-          break;
-        case "STREAMING":
-          switch (action.action) {
-            case "STREAM":
-              stream(action.rms);
-              break;
-            case "RESET":
-              reset();
-              break;
-          }
-        default:
-          break;
-      }
-    };
-    return [render(), machine];
-  };
-
-  // src/app/lib/FontFace.ts
+  // src/app/lib/KeyFrames.ts
   function uuid2(str = "xxxxxxxx") {
     function getRandomSymbol(symbol) {
       let array;
@@ -546,32 +382,8 @@
     }
     return str.replace(/[xy]/g, getRandomSymbol);
   }
-  var useFontFace = (fontFamily, src) => {
-    const id = uuid2();
-    const style = document.createElement("style");
-    style.id = id;
-    document.getElementsByTagName("head")[0].appendChild(style);
-    const render = () => style.innerHTML = `@font-face {font-family:'${fontFamily}'; src: ${src};}`;
-    render();
-    return fontFamily;
-  };
-
-  // src/app/lib/KeyFrames.ts
-  function uuid3(str = "xxxxxxxx") {
-    function getRandomSymbol(symbol) {
-      let array;
-      if (symbol === "y") {
-        array = ["8", "9", "a", "b"];
-        return array[Math.floor(Math.random() * array.length)];
-      }
-      array = new Uint8Array(1);
-      window.crypto.getRandomValues(array);
-      return (array[0] % 16).toString(16);
-    }
-    return str.replace(/[xy]/g, getRandomSymbol);
-  }
   var useKeyFrames = (declarations) => {
-    const id = uuid3();
+    const id = uuid2();
     const style = document.createElement("style");
     style.id = id;
     document.getElementsByTagName("head")[0].appendChild(style);
@@ -598,9 +410,9 @@
     return [getter, setter];
   };
 
-  // src/app/components/Space/Styles.ts
-  var [palette4] = usePalette();
-  useFontFace("anurati", `url('assets/Anurati-Regular.otf')`);
+  // src/app/components/Space.styles.ts
+  var [palette2] = usePalette();
+  var font2 = useFont();
   var [kf] = useKeyFrames({
     container_zoom_width_in: [
       [0, "width", "90vw"],
@@ -627,16 +439,16 @@
       [100, "opacity", 0]
     ]
   });
-  var [css4] = useCss({
+  var [css3] = useCss({
     container: [
-      ["backgroundColor", palette4("white", 0, 0.05)],
-      ["color", palette4("white")],
+      ["backgroundColor", palette2("white", 0, 0.05)],
+      ["color", palette2("white")],
       ["display", "flex"],
       ["justifyContent", "center"],
       ["alignItems", "center"],
       ["width", "90vw"],
       ["height", "90vh"],
-      ["border", `1px solid ${palette4("white", 0, 0.1)}`],
+      ["border", `1px solid ${palette2("white", 0, 0.1)}`],
       ["flexDirection", "column"],
       ["position", "relative"]
     ],
@@ -657,25 +469,25 @@
       ["left", "10vw"]
     ],
     play_button: [
-      ["fontFamily", "anurati"],
+      ["fontFamily", font2("arial")],
       ["fontSize", "5vh"],
       ["marginTop", "40px"],
       ["opacity", "0"],
       ["padding", "20px 20px 20px 24px  "],
-      ["backgroundColor", palette4("transparent")],
-      ["color", palette4("white", 0, 0.5)],
+      ["backgroundColor", palette2("transparent")],
+      ["color", palette2("white", 0, 0.5)],
       ["border", `0`],
       ["cursor", "pointer"],
       ["transition", "all 0.5s"]
     ],
     play_button_active: [
-      ["fontFamily", "anurati"],
+      ["fontFamily", font2("arial")],
       ["fontSize", "3vh"],
       ["marginTop", "0px"],
       ["opacity", "100"],
       ["padding", "20px 20px 20px 24px  "],
-      ["backgroundColor", palette4("transparent")],
-      ["color", palette4("white", 0, 0.5)],
+      ["backgroundColor", palette2("transparent")],
+      ["color", palette2("white", 0, 0.5)],
       ["border", `0`],
       ["cursor", "pointer"],
       ["transition", "all 0.5s"]
@@ -721,7 +533,7 @@
       ["opacity", 0]
     ],
     title_active: [
-      ["fontFamily", "anurati"],
+      ["fontFamily", font2("arial")],
       ["fontSize", "24px"],
       ["letterSpacing", "40px"],
       ["paddingLeft", "40px"],
@@ -730,7 +542,7 @@
       ["marginBottom", "50px"]
     ],
     title_active_play_mode: [
-      ["fontFamily", "anurati"],
+      ["fontFamily", font2("arial")],
       ["fontSize", "0px"],
       ["letterSpacing", "10px"],
       ["paddingLeft", "0px"],
@@ -739,7 +551,7 @@
       ["marginBottom", "0px"]
     ],
     title_inactive: [
-      ["fontFamily", "anurati"],
+      ["fontFamily", font2("arial")],
       ["fontSize", "24px"],
       ["letterSpacing", "40px"],
       ["paddingLeft", "40px"],
@@ -784,45 +596,168 @@
     width_30: [["width", "30vw"]]
   });
 
-  // src/app/components/Space/Space.ts
+  // src/app/components/Spectralizer.styles.ts
+  var [palette3] = usePalette();
+  var [css4] = useCss({
+    spectralizer: [
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["cursor", "pointer"]
+    ],
+    bar_bg: [
+      ["backgroundColor", palette3("white", 0, 0.02)],
+      ["marginLeft", "5px"],
+      ["borderRadius", "7px"],
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["width", "5px"]
+    ],
+    bar: [
+      ["backgroundColor", palette3("purple")],
+      ["borderRadius", "7px"],
+      ["width", "100%"],
+      ["transition", "all 0.10s"],
+      ["height", "0%"]
+    ]
+  });
+
+  // src/app/components/Spectralizer.ts
+  var useSpectralizer = ({
+    state = "IDLE"
+  }) => {
+    const [spectralizer] = useHtml("div", ["class", css4("spectralizer")], ["onmouseenter", () => machine({action: "HOVER_OVER"})], ["onmouseleave", () => machine({action: "HOVER_OUT"})]);
+    let viewState = state;
+    let wave = [0, 10, 20, 30, 40, 70, 90, 90, 70, 40, 30, 20, 10, 0];
+    let waveInterval;
+    let streamWave = [0, 10, 20, 30, 40, 70, 90, 90, 70, 40, 30, 20, 10, 0];
+    const playButton = [0, 0, 0, 0, 50, 40, 30, 20, 10, 4, 0, 0, 0, 0];
+    const pauseButton = [0, 0, 0, 50, 50, 50, 0, 0, 50, 50, 50, 0, 0, 0];
+    const off = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+    const barBgs = off.map(() => useHtml("div", ["class", css4("bar_bg")]));
+    const bars = off.map((i) => useHtml("div", ["class", css4("bar")], ["style", `height:${i}%;`]));
+    const render = () => spectralizer(...barBgs.map(([barBg], bar) => barBg(bars[bar][0]())));
+    const shuffle = (ary) => ary.slice(0).sort(() => Math.random() - 0.5);
+    const animateIn = () => {
+      playButton.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const animateOut = () => {
+      off.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const animateWave = () => {
+      wave = shuffle(wave);
+      wave.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const stream = (rms) => {
+      streamWave.shift();
+      streamWave.push(rms);
+      streamWave.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const reset = () => {
+      playButton.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const showPauseButton = () => {
+      pauseButton.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const showPlayButton = () => {
+      playButton.forEach((i, ii) => bars[ii][1](["style", `height:${i}%;`]));
+    };
+    const machine = (message) => {
+      console.log(message);
+      switch (viewState) {
+        case "IDLE":
+          switch (message.action) {
+            case "ANIMATE_IN":
+              animateIn();
+              break;
+            case "ANIMATE_OUT":
+              animateOut();
+              break;
+            case "PLAY":
+              viewState = "STREAMING";
+              clearInterval(waveInterval);
+              break;
+            case "HOVER_OVER":
+              waveInterval = setInterval(animateWave, 20);
+              break;
+            case "HOVER_OUT":
+              clearInterval(waveInterval);
+              animateIn();
+              break;
+          }
+          break;
+        case "STREAMING":
+          switch (message.action) {
+            case "STREAM":
+              stream(message.rms);
+              break;
+            case "RESET":
+              viewState = "IDLE";
+              reset();
+              break;
+            case "HOVER_OVER":
+              viewState = "STREAMING_HOVER";
+              showPauseButton();
+              break;
+          }
+          break;
+        case "STREAMING_HOVER":
+          switch (message.action) {
+            case "HOVER_OUT":
+              viewState = "STREAMING";
+              showPlayButton();
+              break;
+          }
+      }
+    };
+    return [render(), machine];
+  };
+
+  // src/app/components/Space.ts
   var useSpace = (props) => {
-    const {space, onEscape} = props;
+    const {space, onEscape, audioMachine} = props;
     const {name} = space;
     let state = "PASSIVE";
     let songIndex = 0;
-    const [container, containerAttrs] = useHtml("div", ["class", css4("container")]);
-    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css4("title_container")]);
-    const [header, headerAttrs] = useHtml("div", ["class", css4("title_active", "font_big_on_tablet")]);
-    const [playlist_container, playlistContainerAttrs] = useHtml("div", ["class", css4("playlist_container")]);
-    const spectralizer_container = html("div", ["class", css4("spectralizer_container")], ["onclick", onEscape]);
-    const audioMachine = useAudio((rms) => machine({action: "RMS", rms}));
+    const [container, containerAttrs] = useHtml("div", ["class", css3("container")]);
+    const [title_container, titleContainerAttrs] = useHtml("div", ["class", css3("title_container")]);
+    const [header, headerAttrs] = useHtml("div", ["class", css3("title_active", "font_big_on_tablet")]);
+    const [playlist_container, playlistContainerAttrs] = useHtml("div", ["class", css3("playlist_container")]);
+    const spectralizer_container = html("div", ["class", css3("spectralizer_container")]);
     const [spectralizer, spectralizerMachine] = useSpectralizer({});
     const [playlist, playlistMachine] = usePlaylist({
       space,
       callback: (i) => machine({action: "SONG_CHANGE", songIndex: i})
     });
     const activate = () => {
-      containerAttrs(["class", css4("container", "container_active")]);
-      titleContainerAttrs(["class", css4("title_container_play_mode")]);
-      headerAttrs(["class", css4("title_active_play_mode")]);
-      playlistContainerAttrs(["class", css4("playlist_container_active")]);
+      containerAttrs(["class", css3("container", "container_active")]);
+      titleContainerAttrs(["class", css3("title_container_play_mode")]);
+      headerAttrs(["class", css3("title_active_play_mode")]);
+      playlistContainerAttrs(["class", css3("playlist_container_active")]);
       playlistMachine({action: "START"});
+      spectralizerMachine({action: "PLAY"});
     };
     const deactivate = () => {
-      containerAttrs(["class", css4("container", "container_deactive")]);
-      titleContainerAttrs(["class", css4("title_container")]);
-      headerAttrs(["class", css4("title_active", "title_transition_in", "font_big_on_tablet")]);
-      playlistContainerAttrs(["class", css4("playlist_container")]);
+      containerAttrs(["class", css3("container", "container_deactive")]);
+      titleContainerAttrs(["class", css3("title_container")]);
+      headerAttrs(["class", css3("title_active", "title_transition_in", "font_big_on_tablet")]);
+      playlistContainerAttrs(["class", css3("playlist_container")]);
       playlistMachine({action: "QUIT"});
       spectralizerMachine({action: "RESET"});
       audioMachine({action: "STOP"});
+      onEscape();
     };
     const slideIn = () => {
-      headerAttrs(["class", css4("title_active", "title_transition_in", "font_big_on_tablet")]);
+      headerAttrs(["class", css3("title_active", "title_transition_in", "font_big_on_tablet")]);
       spectralizerMachine({action: "ANIMATE_IN"});
     };
     const slideOut = () => {
-      headerAttrs(["class", css4("title_active", "font_big_on_tablet", "title_transition_out")]);
+      headerAttrs(["class", css3("title_active", "font_big_on_tablet", "title_transition_out")]);
       spectralizerMachine({action: "ANIMATE_OUT"});
     };
     const render = () => container(playlist_container(playlist), title_container(header(name.toUpperCase()), spectralizer_container(spectralizer)));
@@ -925,6 +860,71 @@
     ]
   };
 
+  // src/app/lib/Audio.ts
+  var useAudio = (rmsCallback) => {
+    let state = "IDLE";
+    let audio;
+    let audioCtx;
+    const createAudioElement = (mp3, rmsCallback2) => {
+      audioCtx = new AudioContext();
+      audio = new Audio(mp3);
+      audio.crossOrigin = "anonymous";
+      const processor = audioCtx.createScriptProcessor(2048, 1, 1);
+      audio.addEventListener("canplaythrough", function() {
+        const source = audioCtx.createMediaElementSource(audio);
+        source.connect(processor);
+        source.connect(audioCtx.destination);
+        processor.connect(audioCtx.destination);
+      }, false);
+      processor.addEventListener("audioprocess", function(evt) {
+        const input = evt.inputBuffer.getChannelData(0);
+        const len = input.length;
+        let total = 0;
+        let i = 0;
+        let rms;
+        while (i < len)
+          total += Math.abs(input[i++]);
+        rms = Math.sqrt(total / len);
+        rmsCallback2(rms * 100);
+      });
+      return audio;
+    };
+    const machine = (events) => {
+      switch (state) {
+        case "IDLE":
+          switch (events.action) {
+            case "PLAY":
+              state = "PLAYING";
+              audio = createAudioElement(events.mp3Url, rmsCallback);
+              audio.play();
+              break;
+          }
+          break;
+        case "PLAYING":
+          switch (events.action) {
+            case "PAUSE":
+              state = "PAUSED";
+              audio.pause();
+              break;
+            case "PLAY":
+              audio = createAudioElement(events.mp3Url, rmsCallback);
+              audio.play();
+            case "STOP":
+              audioCtx.close();
+              state = "IDLE";
+          }
+        case "PAUSED":
+          switch (events.action) {
+            case "PLAY":
+              state = "PLAYING";
+              audio.play();
+              break;
+          }
+      }
+    };
+    return machine;
+  };
+
   // src/app/lib/Swipe.ts
   var useSwipe = () => {
     const subscriptions = [];
@@ -975,11 +975,11 @@
     return [sub];
   };
 
-  // src/app/pages/Escape.ts
-  var [palette5] = usePalette();
+  // src/app/pages/Escape.styles.ts
+  var [palette4] = usePalette();
   var [css5] = useCss({
     body: [
-      ["backgroundColor", palette5("black")],
+      ["backgroundColor", palette4("black")],
       ["overflow", "hidden"]
     ],
     container: [
@@ -987,6 +987,8 @@
       ["height", "100vh"]
     ]
   });
+
+  // src/app/pages/Escape.ts
   var useEscapePage = (parent) => {
     useDom("body", ["className", css5("body")]);
     const [swipe] = useSwipe();
@@ -994,17 +996,21 @@
     let activeSlide = "THINK";
     let state = "INIT";
     const [container] = useHtml("div", ["class", css5("container")]);
+    const audioMachine = useAudio((rms) => machine({action: "RMS", rms}));
     const [thinkSpace, thinkMachine] = useSpace({
       space: ThinkSpace_default,
-      onEscape: () => machine({action: "ESCAPE_INTO_SPACE"})
+      onEscape: () => machine({action: "ESCAPE_INTO_SPACE"}),
+      audioMachine
     });
     const [chillSpace, chillMachine] = useSpace({
       space: ChillSpace_default,
-      onEscape: () => machine({action: "ESCAPE_INTO_SPACE"})
+      onEscape: () => machine({action: "ESCAPE_INTO_SPACE"}),
+      audioMachine
     });
     const [deepSpace, deepMachine] = useSpace({
       space: DeepSpace_default,
-      onEscape: () => machine({action: "ESCAPE_INTO_SPACE"})
+      onEscape: () => machine({action: "ESCAPE_INTO_SPACE"}),
+      audioMachine
     });
     const [slides, slider] = useSlider([
       {name: "DEEP", element: deepSpace},
@@ -1033,7 +1039,6 @@
     keypress("Space", () => machine({action: "ESCAPE_INTO_SPACE"}));
     const render = () => {
       parent(container(slides));
-      slider("INIT");
     };
     const enterSpace = () => {
       switch (activeSlide) {
@@ -1066,9 +1071,10 @@
       switch (state) {
         case "INIT":
           render();
-          state = "SEARCHING";
+          slider("INIT");
+          state = "SLIDING";
           break;
-        case "SEARCHING":
+        case "SLIDING":
           switch (message.action) {
             case "NEXT_SLIDE":
               slider("NEXT");
@@ -1093,7 +1099,7 @@
           switch (message.action) {
             case "ESCAPE_OUT_OF_SPACE":
               escapeSpace();
-              state = "SEARCHING";
+              state = "SLIDING";
               break;
           }
       }

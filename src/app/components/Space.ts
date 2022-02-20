@@ -1,9 +1,9 @@
 import { Space } from '@domain/types';
-import { useAudio } from '@lib/Audio';
+import { AudioMachine } from '@lib/Audio';
 import { html, useHtml } from '@lib/Html';
-import { usePlaylist } from '../Playlist';
-import { useSpectralizer } from '../Spectralizer';
-import { css } from './Styles';
+import { usePlaylist } from './Playlist';
+import { css } from './Space.styles';
+import { useSpectralizer } from './Spectralizer';
 
 type SpaceStates = 'ACTIVE' | 'PASSIVE';
 type SpaceMessages =
@@ -12,15 +12,17 @@ type SpaceMessages =
   | { action: 'ACTIVATE' }
   | { action: 'DEACTIVATE' }
   | { action: 'SONG_CHANGE'; songIndex: number }
+  | { action: 'SPECTRALIZER_CLICK' }
   | { action: 'RMS'; rms: number };
 type SpaceProps = {
   space: Space;
   onEscape: () => void;
+  audioMachine: AudioMachine;
 };
 
 export const useSpace: Feds.Component<SpaceProps, SpaceMessages> = (props: SpaceProps) => {
   // props
-  const { space, onEscape } = props;
+  const { space, onEscape, audioMachine } = props;
   const { name } = space;
   let state: SpaceStates = 'PASSIVE';
   let songIndex = 0;
@@ -28,8 +30,7 @@ export const useSpace: Feds.Component<SpaceProps, SpaceMessages> = (props: Space
   const [title_container, titleContainerAttrs] = useHtml('div', ['class', css('title_container')]);
   const [header, headerAttrs] = useHtml('div', ['class', css('title_active', 'font_big_on_tablet')]);
   const [playlist_container, playlistContainerAttrs] = useHtml('div', ['class', css('playlist_container')]);
-  const spectralizer_container = html('div', ['class', css('spectralizer_container')], ['onclick', onEscape]);
-  const audioMachine = useAudio((rms: number) => machine({ action: 'RMS', rms }));
+  const spectralizer_container = html('div', ['class', css('spectralizer_container')]);
 
   // components
   const [spectralizer, spectralizerMachine] = useSpectralizer({});
@@ -45,6 +46,7 @@ export const useSpace: Feds.Component<SpaceProps, SpaceMessages> = (props: Space
     headerAttrs(['class', css('title_active_play_mode')]);
     playlistContainerAttrs(['class', css('playlist_container_active')]);
     playlistMachine({ action: 'START' });
+    spectralizerMachine({ action: 'PLAY' });
   };
 
   const deactivate = () => {
@@ -55,6 +57,7 @@ export const useSpace: Feds.Component<SpaceProps, SpaceMessages> = (props: Space
     playlistMachine({ action: 'QUIT' });
     spectralizerMachine({ action: 'RESET' });
     audioMachine({ action: 'STOP' });
+    onEscape();
   };
 
   const slideIn = () => {

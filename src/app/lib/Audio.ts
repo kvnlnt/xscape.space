@@ -1,13 +1,13 @@
 type AudioState = 'IDLE' | 'PLAYING' | 'PAUSED';
 type AudioMessages = { action: 'PLAY'; mp3Url: string } | { action: 'PAUSE' } | { action: 'STOP' };
+export type AudioMachine = Feds.Machine<AudioMessages>;
 
-export const useAudio = (rmsCallback: (rms: number) => void) => {
+export const useAudio = (rmsCallback: (rms: number) => void): AudioMachine => {
   let state: AudioState = 'IDLE';
   let audio: HTMLAudioElement;
   let audioCtx: AudioContext;
 
   const createAudioElement = (mp3: string, rmsCallback: (rms: number) => void) => {
-    if (audioCtx) audioCtx.close();
     audioCtx = new AudioContext();
     audio = new Audio(mp3);
     audio.crossOrigin = 'anonymous';
@@ -60,6 +60,7 @@ export const useAudio = (rmsCallback: (rms: number) => void) => {
             audio.play();
           case 'STOP':
             audioCtx.close();
+            state = 'IDLE';
         }
       case 'PAUSED':
         switch (events.action) {

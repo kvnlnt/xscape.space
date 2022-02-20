@@ -1,41 +1,9 @@
-import { useCss } from '@lib/Css';
 import { useHtml } from '@lib/Html';
-import { usePalette } from '@lib/Palette';
+import { css } from './Spectralizer.styles';
 
-const [palette] = usePalette();
+type SpectralizerState = 'PLAY_BUTTON' | 'PAUSE_BUTTON' | 'STREAMING' | 'STREAMING_HOVER' | 'IDLE';
 
-const [css] = useCss({
-  spectralizer: [
-    ['display', 'flex'],
-    ['flexDirection', 'row'],
-    ['alignItems', 'center'],
-    ['justifyContent', 'center'],
-    ['height', '100%'],
-    ['cursor', 'pointer'],
-  ],
-  bar_bg: [
-    ['backgroundColor', palette('white', 0, 0.02)],
-    ['marginLeft', '5px'],
-    ['borderRadius', '7px'],
-    ['display', 'flex'],
-    ['flexDirection', 'row'],
-    ['alignItems', 'center'],
-    ['justifyContent', 'center'],
-    ['height', '100%'],
-    ['width', '5px'],
-  ],
-  bar: [
-    ['backgroundColor', palette('purple')],
-    ['borderRadius', '7px'],
-    ['width', '100%'],
-    ['transition', 'all 0.10s'],
-    ['height', '0%'],
-  ],
-});
-
-type SpectralizerState = 'PLAY_BUTTON' | 'PAUSE_BUTTON' | 'STREAMING' | 'IDLE';
-
-type SpectralizerActions =
+type SpectralizerMessages =
   | { action: 'PLAY' }
   | { action: 'PAUSE' }
   | { action: 'CLEAR' }
@@ -70,7 +38,7 @@ type Spectrum = [
 
 export const useSpectralizer = ({
   state = 'IDLE',
-}: SpectralizerProps): [HTMLElement, (action: SpectralizerActions) => void] => {
+}: SpectralizerProps): [HTMLElement, (action: SpectralizerMessages) => void] => {
   const [spectralizer] = useHtml(
     'div',
     ['class', css('spectralizer')],
@@ -82,6 +50,7 @@ export const useSpectralizer = ({
   let waveInterval: number;
   let streamWave: Spectrum = [0, 10, 20, 30, 40, 70, 90, 90, 70, 40, 30, 20, 10, 0];
   const playButton: Spectrum = [0, 0, 0, 0, 50, 40, 30, 20, 10, 4, 0, 0, 0, 0];
+  const pauseButton: Spectrum = [0, 0, 0, 50, 50, 50, 0, 0, 50, 50, 50, 0, 0, 0];
   const off: Spectrum = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
   const barBgs = off.map(() => useHtml('div', ['class', css('bar_bg')]));
   const bars = off.map((i) => useHtml('div', ['class', css('bar')], ['style', `height:${i}%;`]));
@@ -111,19 +80,28 @@ export const useSpectralizer = ({
     playButton.forEach((i, ii) => bars[ii][1](['style', `height:${i}%;`]));
   };
 
-  const machine = (action: SpectralizerActions) => {
+  const showPauseButton = () => {
+    pauseButton.forEach((i, ii) => bars[ii][1](['style', `height:${i}%;`]));
+  };
+
+  const showPlayButton = () => {
+    playButton.forEach((i, ii) => bars[ii][1](['style', `height:${i}%;`]));
+  };
+
+  const machine = (message: SpectralizerMessages) => {
+    console.log(message);
     switch (viewState) {
       case 'IDLE':
-        switch (action.action) {
+        switch (message.action) {
           case 'ANIMATE_IN':
             animateIn();
-            viewState = 'STREAMING';
             break;
           case 'ANIMATE_OUT':
             animateOut();
             break;
           case 'PLAY':
             viewState = 'STREAMING';
+            clearInterval(waveInterval);
             break;
           case 'HOVER_OVER':
             waveInterval = setInterval(animateWave, 20);
@@ -135,16 +113,27 @@ export const useSpectralizer = ({
         }
         break;
       case 'STREAMING':
-        switch (action.action) {
+        switch (message.action) {
           case 'STREAM':
-            stream(action.rms);
+            stream(message.rms);
             break;
           case 'RESET':
+            viewState = 'IDLE';
             reset();
             break;
+          case 'HOVER_OVER':
+            viewState = 'STREAMING_HOVER';
+            showPauseButton();
+            break;
         }
-      default:
         break;
+      case 'STREAMING_HOVER':
+        switch (message.action) {
+          case 'HOVER_OUT':
+            viewState = 'STREAMING';
+            showPlayButton();
+            break;
+        }
     }
   };
 

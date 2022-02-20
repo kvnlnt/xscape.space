@@ -1,28 +1,14 @@
 import { useSlider } from '@components/Slider';
-import { useSpace } from '@components/Space/Space';
+import { useSpace } from '@components/Space';
 import ChillSpace from '@domain/data/ChillSpace';
 import DeepSpace from '@domain/data/DeepSpace';
 import ThinkSpace from '@domain/data/ThinkSpace';
-import { useCss } from '../lib/Css';
+import { useAudio } from '@lib/Audio';
 import { useDom } from '../lib/Dom';
 import { useHtml } from '../lib/Html';
 import { useKeyPress } from '../lib/KeyPress';
-import { usePalette } from '../lib/Palette';
 import { useSwipe } from '../lib/Swipe';
-
-const [palette] = usePalette();
-
-const [css] = useCss({
-  body: [
-    ['backgroundColor', palette('black')],
-    ['overflow', 'hidden'],
-  ],
-
-  container: [
-    ['width', '100vw'],
-    ['height', '100vh'],
-  ],
-});
+import { css } from './Escape.styles';
 
 type Slides = 'THINK' | 'CHILL' | 'DEEP';
 type Messages =
@@ -30,10 +16,12 @@ type Messages =
   | { action: 'ESCAPE_INTO_SPACE' }
   | { action: 'NEXT_SLIDE' }
   | { action: 'PREV_SLIDE' }
-  | { action: 'ESCAPE_OUT_OF_SPACE' };
-type States = 'INIT' | 'SEARCHING' | 'THINKING' | 'CHILLING' | 'IN_DEEP';
+  | { action: 'ESCAPE_OUT_OF_SPACE' }
+  | { action: 'RMS'; rms: number };
+type States = 'INIT' | 'SLIDING' | 'THINKING' | 'CHILLING' | 'IN_DEEP';
+type Props = (...children: (HTMLElement | Node)[]) => void;
 
-export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => void) => {
+export const useEscapePage: Feds.Page<Props> = (parent: Props) => {
   useDom<HTMLBodyElement>('body', ['className', css('body')]);
 
   // props
@@ -42,19 +30,25 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
   let activeSlide: Slides = 'THINK';
   let state: States = 'INIT';
   const [container] = useHtml('div', ['class', css('container')]);
+  const audioMachine = useAudio((rms: number) => machine({ action: 'RMS', rms }));
 
   // components
   const [thinkSpace, thinkMachine] = useSpace({
     space: ThinkSpace,
     onEscape: () => machine({ action: 'ESCAPE_INTO_SPACE' }),
+    audioMachine,
   });
+
   const [chillSpace, chillMachine] = useSpace({
     space: ChillSpace,
     onEscape: () => machine({ action: 'ESCAPE_INTO_SPACE' }),
+    audioMachine,
   });
+
   const [deepSpace, deepMachine] = useSpace({
     space: DeepSpace,
     onEscape: () => machine({ action: 'ESCAPE_INTO_SPACE' }),
+    audioMachine,
   });
 
   const [slides, slider] = useSlider<Slides>(
@@ -82,10 +76,9 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
   keypress('Escape', () => machine({ action: 'ESCAPE_OUT_OF_SPACE' }));
   keypress('Space', () => machine({ action: 'ESCAPE_INTO_SPACE' }));
 
-  // message
+  // methods
   const render = () => {
     parent(container(slides));
-    slider('INIT');
   };
 
   const enterSpace = () => {
@@ -116,15 +109,16 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
     }
   };
 
-  // state
+  // machine
   const machine = (message: Messages = null) => {
     console.log('escape', message, state);
     switch (state) {
       case 'INIT':
         render();
-        state = 'SEARCHING';
+        slider('INIT');
+        state = 'SLIDING';
         break;
-      case 'SEARCHING':
+      case 'SLIDING':
         switch (message.action) {
           case 'NEXT_SLIDE':
             slider('NEXT');
@@ -146,7 +140,7 @@ export const useEscapePage = (parent: (...children: (HTMLElement | Node)[]) => v
         switch (message.action) {
           case 'ESCAPE_OUT_OF_SPACE':
             escapeSpace();
-            state = 'SEARCHING';
+            state = 'SLIDING';
             break;
         }
     }
