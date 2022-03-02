@@ -1,7 +1,6 @@
 import { Space } from '@domain/types';
 import { AudioMachine } from '@lib/Audio';
 import { html, useHtml } from '@lib/Html';
-import { usePlaylist } from './Playlist';
 import { css } from './Space.styles';
 import { useSpectralizer } from './Spectralizer';
 
@@ -13,68 +12,46 @@ type SpaceMessages =
   | { action: 'DEACTIVATE' }
   | { action: 'SONG_CHANGE'; songIndex: number }
   | { action: 'SPECTRALIZER_CLICK' }
-  | { action: 'RMS'; rms: number };
+  | { action: 'RMS'; rms: number }
+  | { action: 'RENDER' };
 type SpaceProps = {
   space: Space;
   onEscape: () => void;
   audioMachine: AudioMachine;
 };
+export type SpaceComponent = Feds.Component<SpaceProps, SpaceMessages>;
 
-export const useSpace: Feds.Component<SpaceProps, SpaceMessages> = (props: SpaceProps) => {
+export const useSpace: SpaceComponent = (props: SpaceProps) => {
   // props
   const { space, onEscape, audioMachine } = props;
-  const { name } = space;
   let state: SpaceStates = 'PASSIVE';
   let songIndex = 0;
   const [container, containerAttrs] = useHtml('div', ['class', css('container')]);
-  const [title_container, titleContainerAttrs] = useHtml('div', ['class', css('title_container')]);
-  const [header, headerAttrs] = useHtml('div', ['class', css('title_active', 'font_big_on_tablet')]);
-  const [playlist_container, playlistContainerAttrs] = useHtml('div', ['class', css('playlist_container')]);
   const spectralizer_container = html('div', ['class', css('spectralizer_container')]);
-
-  // components
-  const [spectralizer, spectralizerMachine] = useSpectralizer({});
-  const [playlist, playlistMachine] = usePlaylist({
-    space,
-    callback: (i: number) => machine({ action: 'SONG_CHANGE', songIndex: i }),
-  });
+  const [spectralizer, spectralizerMachine] = useSpectralizer({ space: space });
 
   // methods
   const activate = () => {
     containerAttrs(['class', css('container', 'container_active')]);
-    titleContainerAttrs(['class', css('title_container_play_mode')]);
-    headerAttrs(['class', css('title_active_play_mode')]);
-    playlistContainerAttrs(['class', css('playlist_container_active')]);
-    playlistMachine({ action: 'START' });
     spectralizerMachine({ action: 'PLAY' });
   };
 
   const deactivate = () => {
     containerAttrs(['class', css('container', 'container_deactive')]);
-    titleContainerAttrs(['class', css('title_container')]);
-    headerAttrs(['class', css('title_active', 'title_transition_in', 'font_big_on_tablet')]);
-    playlistContainerAttrs(['class', css('playlist_container')]);
-    playlistMachine({ action: 'QUIT' });
     spectralizerMachine({ action: 'RESET' });
     audioMachine({ action: 'STOP' });
     onEscape();
   };
 
   const slideIn = () => {
-    headerAttrs(['class', css('title_active', 'title_transition_in', 'font_big_on_tablet')]);
     spectralizerMachine({ action: 'ANIMATE_IN' });
   };
 
   const slideOut = () => {
-    headerAttrs(['class', css('title_active', 'font_big_on_tablet', 'title_transition_out')]);
     spectralizerMachine({ action: 'ANIMATE_OUT' });
   };
 
-  const render = () =>
-    container(
-      playlist_container(playlist),
-      title_container(header(name.toUpperCase()), spectralizer_container(spectralizer)),
-    );
+  const render = () => container(spectralizer_container(spectralizer));
 
   const playSong = () => {
     audioMachine({ action: 'PLAY', mp3Url: space.songs[songIndex].mp3Url });

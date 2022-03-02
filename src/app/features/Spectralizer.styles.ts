@@ -13,11 +13,11 @@ const [css] = useCss({
     ['cursor', 'pointer'],
   ],
   bar_bg: [
-    ['backgroundColor', palette('white', 0, 0.02)],
+    ['backgroundColor', palette('white', 0, 0.01)],
     ['marginLeft', '5px'],
     ['borderRadius', '7px'],
     ['display', 'flex'],
-    ['flexDirection', 'row'],
+    ['flexDirection', 'column'],
     ['alignItems', 'center'],
     ['justifyContent', 'center'],
     ['height', '100%'],
@@ -27,8 +27,9 @@ const [css] = useCss({
     ['backgroundColor', palette('purple')],
     ['borderRadius', '7px'],
     ['width', '100%'],
-    ['transition', 'all 0.10s'],
+    ['transition', 'all 0.50s'],
     ['height', '0%'],
+    ['position', 'relative'],
   ],
 });
 

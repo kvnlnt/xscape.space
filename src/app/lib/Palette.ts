@@ -1,4 +1,4 @@
-const Colors = {
+export const Colors = {
   black: [0, 0, 5],
   brown: [44, 11, 14],
   red: [0, 100, 50],

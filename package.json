@@ -24,8 +24,8 @@
   "homepage": "https://github.com/kvnlnt/xscape.space#readme",
   "devDependencies": {
     "concurrently": "^6.2.1",
-    "esbuild": "^0.11.10"
+    "esbuild": "^0.11.10",
+    "esbuild-css-modules-plugin": "^2.1.6"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }

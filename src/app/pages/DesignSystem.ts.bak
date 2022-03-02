@@ -1,0 +1,166 @@
+namespace $ {
+  type HtmlNode = HTMLElement | string | number | SVGElement;
+  type AttrFeature = ['attr', string, string];
+  type OnSubmitFeature = ['on-submit', string, string];
+  type StyleFeature = ['style', string, string];
+  type Feature = AttrFeature | OnSubmitFeature | StyleFeature;
+  type HtmlFeature = (feature: Feature) => (el: HtmlNode) => void;
+
+  // html element
+  export const _ =
+    <T extends keyof Partial<HTMLElementTagNameMap>, U extends Feature[0]>(
+      tag: T,
+      ...featureArgs: (U extends 'attr' ? AttrFeature : U extends 'on-submit' ? OnSubmitFeature : StyleFeature)[]
+    ) =>
+    (...children: HtmlNode[]) => {
+      const el = document.createElementNS('http://www.w3.org/1999/xhtml', tag);
+      // features.forEach((feature) => feature(el));
+      children.forEach((child) => {
+        if (child instanceof Node) el.appendChild(child);
+        if (typeof child === 'string' || typeof child === 'number') el.innerHTML += child;
+      });
+      return el;
+    };
+
+  const h1 = _(
+    'h1',
+    ['style', 'fontSize', '12px'],
+    ['style', 'color', 'blue'],
+    ['on-submit', 'id', 'asdf'],
+    ['style', 'asdf', 'asdf'],
+  )();
+
+  // Html Attribute
+  export const Attr =
+    (...props: [string, string | number][]) =>
+    (el: HTMLElement) => {
+      console.log(el);
+      props.forEach(([k, v]) => el.setAttribute(k, String(v)));
+    };
+
+  export const OnInput =
+    (...cbs: ((value: string) => void)[]) =>
+    (el: HTMLElement) => {
+      el.addEventListener('input', (evt: InputEvent) =>
+        cbs.forEach((cb) => cb((evt.target as HTMLInputElement).value)),
+      );
+    };
+
+  export const OnSubmit = (cb: (evt: SubmitEvent) => void) => (el: HTMLFormElement) => {
+    el.addEventListener('submit', (evt: SubmitEvent) => {
+      evt.preventDefault();
+      cb(evt);
+    });
+  };
+
+  // Console debugger
+  export const Console = (...strings: string[]) => console.log(...strings);
+
+  // Message Pub
+  type Subscription = { eventName: string; cb: Function };
+  const subscriptions: Subscription[] = [];
+  export const Pub = (eventName: string) => () =>
+    subscriptions.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
+  export const Sub = (eventName: string, cb: Function) => (el: HTMLElement) =>
+    subscriptions.push({ eventName, cb: () => cb(el) });
+
+  // Styles
+  export const Style =
+    (...styles: [keyof CSSStyleDeclaration, string][]) =>
+    (el: HTMLElement) => {
+      const currStyle = el.getAttribute('style') ? el.getAttribute('style').split(';') : [];
+      el.setAttribute(
+        'style',
+        [
+          ...currStyle,
+          ...styles.map(([k, v]) => `${(k as string).replace(/([A-Z])/g, '-$1').toLowerCase()}:${v}`),
+        ].join(';'),
+      );
+    };
+}
+
+const { _, Attr, OnInput, Pub, Sub, Console, Style, OnSubmit } = $;
+
+enum Events {
+  TODO_CHANGE = 'TODO_CHANGE',
+}
+
+export const DesignSystem = () => {
+  let todo = '';
+  const setTodo = (val: string) => (todo = val);
+
+  // const h2 = _(
+  //   'h2',
+  //   Attr(['data-id', 1]),
+  //   Style(['fontSize', '20px'], ['color', 'green']),
+  //   Style(['borderBottom', '1px solid green']),
+  // );
+
+  // const reader = _(
+  //   'div',
+  //   Attr(['data-id', 1]),
+  //   Sub(Events.TODO_CHANGE, (el: HTMLElement) => (el.innerText = todo)),
+  // );
+
+  // const form = _(
+  //   'form',
+  //   OnSubmit((evt) => console.log(evt.target.input.value, todo)),
+  // );
+
+  // return _('div')(
+  //   h1('ExampleApp'),
+  //   h2('subtitle'),
+  //   reader(''),
+  //   form(
+  //     _('fieldset')(
+  //       _('legend')('Todos'),
+  //       _('label')('todo'),
+  //       _('input', Attr(['data-id', 1]), Attr(['name', 'input']), OnInput(setTodo, Pub(Events.TODO_CHANGE)))(),
+  //       _('button', Attr(['type', 'submit']))('Submit'),
+  //     ),
+  //   ),
+  // );
+};
+
+// import { useCss } from '@lib/Css';
+// import { html } from '@lib/Html';
+// import { usePalette } from '@lib/Palette';
+
+// const [palette] = usePalette();
+
+// const [css] = useCss({
+//   wrapper: [
+//     ['display', 'flex'],
+//     ['flexDirection', 'row'],
+//     ['flexWrap', 'wrap'],
+//     ['justifyContent', 'center'],
+//     ['alignItems', 'center'],
+//   ],
+//   letter: [['margin', '10px']],
+//   bar_wrapper: [
+//     ['backgroundColor', palette('white', 0, 0.01)],
+//     ['marginLeft', '5px'],
+//     ['borderRadius', '7px'],
+//     ['display', 'flex'],
+//     ['flexDirection', 'column'],
+//     ['alignItems', 'center'],
+//     ['justifyContent', 'center'],
+//     ['height', '100%'],
+//     ['width', '5px'],
+//   ],
+//   bar: [
+//     ['backgroundColor', palette('purple')],
+//     ['borderRadius', '7px'],
+//     ['width', '100%'],
+//     ['transition', 'all 0.50s'],
+//     ['height', '0%'],
+//     ['position', 'relative'],
+//   ],
+// });
+
+// const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+
+// export const DesignSystem = () =>
+//   html('div', ['class', css('wrapper')])(
+//     ...letters.split('').map((letter) => html('div', ['class', css('letter')])(letter)),
+//   );

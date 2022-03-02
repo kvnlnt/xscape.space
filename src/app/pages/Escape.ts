@@ -1,9 +1,9 @@
-import { useSlider } from '@components/Slider';
-import { useSpace } from '@components/Space';
 import ChillSpace from '@domain/data/ChillSpace';
 import DeepSpace from '@domain/data/DeepSpace';
 import ThinkSpace from '@domain/data/ThinkSpace';
 import { useAudio } from '@lib/Audio';
+import { useSlider } from 'src/app/features/Slider';
+import { useSpace } from 'src/app/features/Space';
 import { useDom } from '../lib/Dom';
 import { useHtml } from '../lib/Html';
 import { useKeyPress } from '../lib/KeyPress';
@@ -30,6 +30,8 @@ export const useEscapePage: Feds.Page<Props> = (parent: Props) => {
   let activeSlide: Slides = 'THINK';
   let state: States = 'INIT';
   const [container] = useHtml('div', ['class', css('container')]);
+
+  // components
   const audioMachine = useAudio((rms: number) => machine({ action: 'RMS', rms }));
 
   // components
@@ -111,7 +113,6 @@ export const useEscapePage: Feds.Page<Props> = (parent: Props) => {
 
   // machine
   const machine = (message: Messages = null) => {
-    console.log('escape', message, state);
     switch (state) {
       case 'INIT':
         render();
