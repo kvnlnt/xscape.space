@@ -81,38 +81,51 @@
     });
     return el;
   };
-  var useEvent = (..._) => {
-    const subscribers = [];
-    const pub2 = (eventName) => subscribers.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
-    const sub2 = (eventName, cb) => subscribers.push({eventName, cb});
-    return [pub2, sub2];
+  var useModel = (model) => {
+    const _model = model;
+    const _subscriptions = [];
+    const subscriber = (key, cb) => {
+      _subscriptions.push({
+        key,
+        cb
+      });
+    };
+    const getter = (key) => {
+      return _model[key];
+    };
+    const setter = (key, val) => {
+      _model[key] = val;
+      _subscriptions.filter((i) => i.key === key).forEach((i) => i.cb(_model[key]));
+      return _model[key];
+    };
+    return {
+      get: getter,
+      set: setter,
+      sub: subscriber
+    };
   };
 
   // src/app/pages/DesignSystem.ts
-  var Events;
-  (function(Events2) {
-    Events2["TODO_CHANGE"] = "TODO_CHANGE";
-  })(Events || (Events = {}));
-  var state = "IDLE";
-  var todo = "";
-  var setTodo = (el) => machine({action: "TODO_UPDATE", todo: el.value});
-  var handleSubmit = (evt) => console.log(evt.target, todo);
-  var bindInputChange = (el) => sub(Events.TODO_CHANGE, () => {
-    el.innerText = todo;
-  });
-  var [pub, sub] = useEvent();
-  var machine = (message) => {
-    switch (state) {
-      case "IDLE":
-        switch (message.action) {
-          case "TODO_UPDATE":
-            todo = message.todo;
-            pub(Events.TODO_CHANGE);
-            break;
-        }
-    }
+  var DesignSystem = () => {
+    let state = "IDLE";
+    const todoModel = useModel({Todo: "test"});
+    const handleOnInput = (el) => machine({action: "TODO_UPDATE", todo: el.value});
+    const handleSubmit = (evt) => console.log(evt.target, todoModel.get("Todo"));
+    const listenForTodoChange = (el) => todoModel.sub("Todo", (todo) => {
+      el.innerText = todo;
+    });
+    const machine = (message) => {
+      switch (state) {
+        case "IDLE":
+          switch (message.action) {
+            case "TODO_UPDATE":
+              todoModel.set("Todo", message.todo);
+              break;
+          }
+      }
+    };
+    return html("div")(html("h1", ["color", "blue"])("ExampleApp"), html("h2", ["style", "fontSize", "24px"])("subtitle"), html("div", ["style", "fontSize", "18px"], ["bind", listenForTodoChange])("..."), html("form", ["onsubmit", handleSubmit])(html("fieldset")(html("legend")("to dos"), html("input", ["attr", "name", "input"], ["oninput", handleOnInput])(), html("button", ["attr", "type", "submit"])("Submit"))));
   };
-  var DesignSystem = () => html("div")(html("h1", ["color", "blue"])("ExampleApp"), html("h2", ["style", "fontSize", "24px"])("subtitle"), html("div", ["style", "fontSize", "18px"], ["bind", bindInputChange])("..."), html("form", ["onsubmit", handleSubmit])(html("fieldset")(html("legend")("to dos"), html("label")("todo"), html("input", ["attr", "name", "input"], ["oninput", setTodo])(), html("button", ["attr", "type", "submit"])("Submit"))));
 
   // src/main.ts
   window.addEventListener("DOMContentLoaded", async () => {

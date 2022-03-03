@@ -1,49 +1,52 @@
-import { html as $, useEvent } from '@lib/Feds';
+import { html as $, useModel } from '@lib/Feds';
 
-enum Events {
-  TODO_CHANGE = 'TODO_CHANGE',
-}
-
-type State = 'IDLE';
-type Messages = { action: 'TODO_UPDATE'; todo: string };
-
-let state: State = 'IDLE';
-let todo = '';
-const setTodo = (el: HTMLInputElement) => machine({ action: 'TODO_UPDATE', todo: el.value });
-const handleSubmit = (evt: SubmitEvent) => console.log(evt.target, todo);
-const bindInputChange = (el: HTMLElement) =>
-  sub(Events.TODO_CHANGE, () => {
-    el.innerText = todo;
-  });
-const [pub, sub] = useEvent();
-
-const machine = (message: Messages) => {
-  switch (state) {
-    case 'IDLE':
-      switch (message.action) {
-        case 'TODO_UPDATE':
-          todo = message.todo;
-          pub(Events.TODO_CHANGE);
-          break;
-      }
-  }
+type Todo = {
+  Todo: string;
 };
 
-export const DesignSystem = () =>
-  $('div')(
+type State = 'IDLE';
+type Messages = { action: 'TODO_UPDATE'; todo: Todo['Todo'] };
+
+export const DesignSystem = () => {
+  let state: State = 'IDLE';
+
+  // models
+  const todoModel = useModel<Todo>({ Todo: 'test' });
+
+  // handlers
+  const handleOnInput = (el: HTMLInputElement) => machine({ action: 'TODO_UPDATE', todo: el.value });
+  const handleSubmit = (evt: SubmitEvent) => console.log(evt.target, todoModel.get('Todo'));
+
+  // listeners
+  const listenForTodoChange = (el: HTMLElement) =>
+    todoModel.sub('Todo', (todo) => {
+      el.innerText = todo;
+    });
+
+  // state machine
+  const machine = (message: Messages) => {
+    switch (state) {
+      case 'IDLE':
+        switch (message.action) {
+          case 'TODO_UPDATE':
+            todoModel.set('Todo', message.todo);
+            break;
+        }
+    }
+  };
+
+  return $('div')(
     $('h1', ['color', 'blue'])('ExampleApp'),
     $('h2', ['style', 'fontSize', '24px'])('subtitle'),
-    $('div', ['style', 'fontSize', '18px'], ['bind', bindInputChange])('...'),
+    $('div', ['style', 'fontSize', '18px'], ['bind', listenForTodoChange])('...'),
     $('form', ['onsubmit', handleSubmit])(
       $('fieldset')(
         $('legend')('to dos'),
-        $('label')('todo'),
-        $('input', ['attr', 'name', 'input'], ['oninput', setTodo])(),
+        $('input', ['attr', 'name', 'input'], ['oninput', handleOnInput])(),
         $('button', ['attr', 'type', 'submit'])('Submit'),
-        // html('input', Attr(['data-id', 1]), Attr(['name', 'input']), OnInput(setTodo, Pub(Events.TODO_CHANGE)))(),
-        // html('button', Attr(['type', 'submit']))('Submit'),
       ),
     ),
   );
+};
 
 // const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';

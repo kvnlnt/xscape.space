@@ -131,33 +131,54 @@ export const html =
     return el;
   };
 
-// Message Pub
-// type Subscription = { eventName: string; cb: Function };
-// type Pub = (eventName: string) => () => void;
-// type Sub = (eventName: string, cb: Function) => void;
-// export const EventBus = () => {
-//   const subscriptions: Subscription[] = [];
-//   const pub: Pub = (eventName: string) => () => {
-//     console.log('pub', eventName);
-//     subscriptions.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
-//   };
-//   const sub: Sub = (eventName: string, cb: Function) => {
-//     console.log('sub', eventName, cb);
-//     subscriptions.push({ eventName, cb });
-//   };
-//   return {
-//     pub,
-//     sub,
-//   };
-// };
-
+/**
+ * A miniature "Event Bus"
+ */
 type Pub = (eventName: string) => void;
 type Sub = (eventName: string, cb: Function) => void;
 type Subscriber = { eventName: string; cb: Function };
 
-export const useEvent = (..._: string[]): [Pub, Sub] => {
+export const useSignal = (..._: string[]): [Pub, Sub] => {
   const subscribers: Subscriber[] = [];
   const pub: Pub = (eventName: string) => subscribers.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
   const sub: Sub = (eventName: string, cb: Function) => subscribers.push({ eventName, cb });
   return [pub, sub];
+};
+
+/**
+ * Model
+ */
+type ModelSubscription<T> = { key: keyof T; cb: (val: T[keyof T]) => void };
+export const useModel = <T>(
+  model: T,
+): {
+  get: (key: keyof T) => T[keyof T];
+  set: (key: keyof T, val: T[keyof T]) => T[keyof T];
+  sub: (key: keyof T, cb: (val: T[keyof T]) => void) => void;
+} => {
+  const _model: T = model;
+  const _subscriptions: ModelSubscription<T>[] = [];
+
+  const subscriber = (key: keyof T, cb: (val: T[keyof T]) => void) => {
+    _subscriptions.push({
+      key,
+      cb,
+    });
+  };
+
+  const getter = (key: keyof T) => {
+    return _model[key];
+  };
+
+  const setter = (key: keyof T, val: T[keyof T]) => {
+    _model[key] = val;
+    _subscriptions.filter((i) => i.key === key).forEach((i) => i.cb(_model[key]));
+    return _model[key];
+  };
+
+  return {
+    get: getter,
+    set: setter,
+    sub: subscriber,
+  };
 };
