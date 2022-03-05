@@ -81,50 +81,53 @@
     });
     return el;
   };
-  var useModel = (model) => {
-    const _model = model;
-    const _subscriptions = [];
-    const subscriber = (key, cb) => {
-      _subscriptions.push({
-        key,
+  var useMachine = (context, machine2) => {
+    let _context = context;
+    const _subs = [];
+    const sub = (action, cb) => {
+      _subs.push({
+        action,
         cb
       });
     };
-    const getter = (key) => {
-      return _model[key];
+    const get = (key) => {
+      return _context[key];
     };
-    const setter = (key, val) => {
-      _model[key] = val;
-      _subscriptions.filter((i) => i.key === key).forEach((i) => i.cb(_model[key]));
-      return _model[key];
+    const pub = (message) => {
+      _context = machine2(message, _context);
+      _subs.filter((sub2) => sub2["action"] === message["action"]).forEach((i) => i.cb(_context));
+      return _context;
     };
     return {
-      get: getter,
-      set: setter,
-      sub: subscriber
+      get,
+      pub,
+      sub
     };
   };
 
   // src/app/pages/DesignSystem.ts
+  var machine = useMachine({todo: "test", state: "IDLE"}, (message, context) => {
+    switch (context.state) {
+      case "IDLE":
+        switch (message.action) {
+          case "TODO_UPDATE":
+            context = {...context, todo: message.payload.todo};
+            break;
+          case "SUBMIT":
+            console.log(context);
+            break;
+        }
+    }
+    return context;
+  });
   var DesignSystem = () => {
-    let state = "IDLE";
-    const todoModel = useModel({Todo: "test"});
-    const handleOnInput = (el) => machine({action: "TODO_UPDATE", todo: el.value});
-    const handleSubmit = (evt) => console.log(evt.target, todoModel.get("Todo"));
-    const listenForTodoChange = (el) => todoModel.sub("Todo", (todo) => {
-      el.innerText = todo;
+    const listenForContextChange = (el) => machine.sub("TODO_UPDATE", (context) => {
+      el.innerText = context.todo;
+      return null;
     });
-    const machine = (message) => {
-      switch (state) {
-        case "IDLE":
-          switch (message.action) {
-            case "TODO_UPDATE":
-              todoModel.set("Todo", message.todo);
-              break;
-          }
-      }
-    };
-    return html("div")(html("h1", ["color", "blue"])("ExampleApp"), html("h2", ["style", "fontSize", "24px"])("subtitle"), html("div", ["style", "fontSize", "18px"], ["bind", listenForTodoChange])("..."), html("form", ["onsubmit", handleSubmit])(html("fieldset")(html("legend")("to dos"), html("input", ["attr", "name", "input"], ["oninput", handleOnInput])(), html("button", ["attr", "type", "submit"])("Submit"))));
+    const handleInput = (el) => machine.pub({action: "TODO_UPDATE", payload: {todo: el.value}});
+    const template = html("div")(html("h1", ["color", "blue"])("ExampleApp"), html("h2", ["style", "fontSize", "24px"])("subtitle"), html("div", ["style", "fontSize", "18px"], ["bind", listenForContextChange])("..."), html("form", ["onsubmit", () => machine.pub({action: "SUBMIT"})])(html("fieldset")(html("legend")("to dos"), html("input", ["attr", "name", "input"], ["oninput", handleInput])(), html("button", ["attr", "type", "submit"])("Submit"))));
+    return template;
   };
 
   // src/main.ts

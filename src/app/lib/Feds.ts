@@ -182,3 +182,42 @@ export const useModel = <T>(
     sub: subscriber,
   };
 };
+
+/**
+ * Machine
+ */
+type MachineSubscription<Context, Actions> = { action: Actions; cb: (context: Context) => void };
+export const useMachine = <Context, Actions, Messages extends { action: Actions; payload?: Partial<Context> }>(
+  context: Context,
+  machine: (message: Messages, context: Context) => Context,
+): {
+  get: (key: keyof Context) => Context[keyof Context];
+  pub: (message: Messages) => void;
+  sub: (key: Actions, cb: (context: Context) => Context) => void;
+} => {
+  let _context: Context = context;
+  const _subs: MachineSubscription<Context, Actions>[] = [];
+
+  const sub = (action: Actions, cb: (context: Context) => void) => {
+    _subs.push({
+      action,
+      cb,
+    });
+  };
+
+  const get = (key: keyof Context) => {
+    return _context[key];
+  };
+
+  const pub = (message: Messages & { action: string }) => {
+    _context = machine(message, _context);
+    _subs.filter((sub) => sub['action'] === message['action']).forEach((i) => i.cb(_context));
+    return _context;
+  };
+
+  return {
+    get,
+    pub,
+    sub,
+  };
+};
