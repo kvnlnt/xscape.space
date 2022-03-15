@@ -1,4 +1,6 @@
-import { html as $, useMachine } from '@lib/Feds';
+import { Color, Colors } from '@framework/colors';
+import { Html } from '@framework/html';
+import { useMachine } from '@lib/Feds';
 
 type Context = {
   todo: string;
@@ -27,26 +29,32 @@ const machine = useMachine<Context, Messages['action'], Messages>(
 );
 
 export const DesignSystem = () => {
-  // listeners
-  const listenForContextChange = (el: HTMLElement) =>
-    machine.sub('TODO_UPDATE', (context) => {
-      el.innerText = context.todo;
-      return null;
-    });
-
-  const handleInput = (el: HTMLInputElement) => machine.pub({ action: 'TODO_UPDATE', payload: { todo: el.value } });
+  const $ = Html({
+    color: (el, color: keyof typeof Colors) => (el.style.color = Color(color)),
+    font_size: (el, size: number) => (el.style.fontSize = `${size}px`),
+    on_input: (el: HTMLInputElement) => {
+      el.addEventListener('input', () => {
+        machine.pub({ action: 'TODO_UPDATE', payload: { todo: el.value } });
+      });
+    },
+    on_submit: (el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        machine.pub({ action: 'SUBMIT' });
+      });
+    },
+    on_machine_message: (el: HTMLElement, msg: 'TODO_UPDATE') =>
+      machine.sub(msg, (context) => {
+        if (msg === 'TODO_UPDATE') el.innerText = context.todo;
+        return null;
+      }),
+  });
 
   const template = $('div')(
     $('h1', ['color', 'blue'])('ExampleApp'),
-    $('h2', ['style', 'fontSize', '24px'])('subtitle'),
-    $('div', ['style', 'fontSize', '18px'], ['bind', listenForContextChange])('...'),
-    $('form', ['onsubmit', () => machine.pub({ action: 'SUBMIT' })])(
-      $('fieldset')(
-        $('legend')('to dos'),
-        $('input', ['attr', 'name', 'input'], ['oninput', handleInput])(),
-        $('button', ['attr', 'type', 'submit'])('Submit'),
-      ),
-    ),
+    $('h2', ['font_size', 24])('subtitle'),
+    $('div', ['font_size', 18], ['on_machine_message', 'TODO_UPDATE'])('...'),
+    $('form')($('fieldset')($('legend')('to dos'), $('input', ['on_input'])(), $('button', ['on_submit'])('Submit'))),
   );
 
   return template;

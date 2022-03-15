@@ -18,61 +18,31 @@
     return [setHtml, setAttrs];
   }
 
-  // src/app/lib/Feds.ts
-  function Attr(el, ...feature) {
-    const [prop, val] = feature;
-    el.setAttribute(prop, String(val));
-  }
-  function Color(el, ...feature) {
-    const [color, brightness, opacity] = feature;
-    const [h, s, l] = color;
-    const hsla = `hsla(${h}deg,${s}%,${l + brightness}%,${opacity})`;
-    el.style.color = hsla;
-  }
-  function Bind(el, ...feature) {
-    const [cb] = feature;
-    cb(el);
-  }
-  function OnSubmit(el, ...feature) {
-    const [cb] = feature;
-    el.addEventListener("submit", (evt) => {
-      evt.preventDefault();
-      cb(evt);
-    });
-  }
-  function OnInput(el, ...feature) {
-    const [cb] = feature;
-    el.addEventListener("input", (evt) => cb(evt.target));
-  }
-  function Style(el, ...feature) {
-    const [prop, val] = feature;
-    el.style[prop] = val;
-  }
-  var html = (tag, ...features) => (...children) => {
+  // src/app/framework/colors.ts
+  var Colors = {
+    black: [0, 0, 5],
+    brown: [44, 11, 14],
+    red: [0, 100, 50],
+    blue: [240, 100, 50],
+    yellow: [55, 100, 50],
+    green: [118, 100, 50],
+    purple: [270, 100, 50],
+    orange: [30, 100, 50],
+    transparent: "transparent",
+    white: [0, 0, 100]
+  };
+  var Color = (color, adjustLightness = 0, opacity = 1) => {
+    if (color === "transparent")
+      return color;
+    const [h, s, l] = Colors[color];
+    const hsla = `hsla(${h}deg,${s}%,${l + adjustLightness}%,${opacity})`;
+    return hsla;
+  };
+
+  // src/app/framework/html.ts
+  var Html = (features) => (tag, ...attrs) => (...children) => {
     const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
-    features.forEach((feature) => {
-      const [featureAttr, ...featureArgs] = feature;
-      switch (featureAttr) {
-        case "attr":
-          Attr(el, ...featureArgs);
-          break;
-        case "bind":
-          Bind(el, ...featureArgs);
-          break;
-        case "color":
-          Color(el, ...featureArgs);
-          break;
-        case "style":
-          Style(el, ...featureArgs);
-          break;
-        case "oninput":
-          OnInput(el, ...featureArgs);
-          break;
-        case "onsubmit":
-          OnSubmit(el, ...featureArgs);
-          break;
-      }
-    });
+    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
     children.forEach((child) => {
       if (child instanceof Node)
         el.appendChild(child);
@@ -81,6 +51,8 @@
     });
     return el;
   };
+
+  // src/app/lib/Feds.ts
   var useMachine = (context, machine2) => {
     let _context = context;
     const _subs = [];
@@ -121,12 +93,27 @@
     return context;
   });
   var DesignSystem = () => {
-    const listenForContextChange = (el) => machine.sub("TODO_UPDATE", (context) => {
-      el.innerText = context.todo;
-      return null;
+    const $ = Html({
+      color: (el, color) => el.style.color = Color(color),
+      font_size: (el, size) => el.style.fontSize = `${size}px`,
+      on_input: (el) => {
+        el.addEventListener("input", () => {
+          machine.pub({action: "TODO_UPDATE", payload: {todo: el.value}});
+        });
+      },
+      on_submit: (el) => {
+        el.addEventListener("click", (e) => {
+          e.preventDefault();
+          machine.pub({action: "SUBMIT"});
+        });
+      },
+      on_machine_message: (el, msg) => machine.sub(msg, (context) => {
+        if (msg === "TODO_UPDATE")
+          el.innerText = context.todo;
+        return null;
+      })
     });
-    const handleInput = (el) => machine.pub({action: "TODO_UPDATE", payload: {todo: el.value}});
-    const template = html("div")(html("h1", ["color", "blue"])("ExampleApp"), html("h2", ["style", "fontSize", "24px"])("subtitle"), html("div", ["style", "fontSize", "18px"], ["bind", listenForContextChange])("..."), html("form", ["onsubmit", () => machine.pub({action: "SUBMIT"})])(html("fieldset")(html("legend")("to dos"), html("input", ["attr", "name", "input"], ["oninput", handleInput])(), html("button", ["attr", "type", "submit"])("Submit"))));
+    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["font_size", 18], ["on_machine_message", "TODO_UPDATE"])("..."), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input"])(), $("button", ["on_submit"])("Submit"))));
     return template;
   };
 
