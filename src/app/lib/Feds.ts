@@ -66,61 +66,24 @@ function Style(el: HTMLElement, ...feature: StyleFeature) {
   el.style[prop as number] = val;
 }
 
-/**
- * Html Templating Engine
- */
-type HtmlNode = HTMLElement | string | number | SVGElement;
+type Tags = keyof HTMLElementTagNameMap;
+type FeatureProp = string;
+type FeatureFunc = (el: HTMLElement, ...a: any) => null;
+type OmitFirstArg<T> = T extends (x: any, ...args: infer P) => infer R ? (...args: P) => R : never;
+type FeatureParams<T> = Parameters<OmitFirstArg<T>>;
 
-export const html =
-  <
-    T extends keyof Partial<HTMLElementTagNameMap>,
-    U extends 'attr' | 'bind' | 'color' | 'style' | 'oninput' | 'onsubmit',
-  >(
-    tag: T,
-    ...features: [
-      U,
-      ...(U extends 'attr'
-        ? AttrFeature<T>
-        : U extends 'bind'
-        ? BindFeature
-        : U extends 'color'
-        ? ColorFeature
-        : U extends 'style'
-        ? StyleFeature
-        : U extends 'oninput'
-        ? OnInputFeature
-        : U extends 'onsubmit'
-        ? OnSubmitFeature
-        : unknown)
-    ][]
+const html =
+  <T extends Record<FeatureProp, FeatureFunc>>(features: T) =>
+  <KS extends Array<keyof T>>(
+    tag: Tags,
+    ...attrs: { [I in keyof KS]-?: [KS[I], ...FeatureParams<T[Extract<KS[I], keyof T>]>] }
   ) =>
-  (...children: HtmlNode[]) => {
+  (...children: (HTMLElement | string | number | SVGElement)[]) => {
+    // Create element
     const el = document.createElementNS('http://www.w3.org/1999/xhtml', tag);
 
-    // features
-    features.forEach((feature) => {
-      const [featureAttr, ...featureArgs] = feature;
-      switch (featureAttr) {
-        case 'attr':
-          Attr<T>(el, ...(featureArgs as AttrFeature<T>));
-          break;
-        case 'bind':
-          Bind(el, ...(featureArgs as BindFeature));
-          break;
-        case 'color':
-          Color(el, ...(featureArgs as ColorFeature));
-          break;
-        case 'style':
-          Style(el, ...(featureArgs as StyleFeature));
-          break;
-        case 'oninput':
-          OnInput(el, ...(featureArgs as OnInputFeature));
-          break;
-        case 'onsubmit':
-          OnSubmit(el, ...(featureArgs as OnSubmitFeature));
-          break;
-      }
-    });
+    // Run features
+    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
 
     // Append children
     children.forEach((child) => {
@@ -131,57 +94,12 @@ export const html =
     return el;
   };
 
-/**
- * A miniature "Event Bus"
- */
-type Pub = (eventName: string) => void;
-type Sub = (eventName: string, cb: Function) => void;
-type Subscriber = { eventName: string; cb: Function };
+const $ = html({
+  attr: (el, prop: 'id', val: 'test') => null,
+  style: (el, prop: 'font', val: 'arial') => null,
+});
 
-export const useSignal = (..._: string[]): [Pub, Sub] => {
-  const subscribers: Subscriber[] = [];
-  const pub: Pub = (eventName: string) => subscribers.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
-  const sub: Sub = (eventName: string, cb: Function) => subscribers.push({ eventName, cb });
-  return [pub, sub];
-};
-
-/**
- * Model
- */
-type ModelSubscription<T> = { key: keyof T; cb: (val: T[keyof T]) => void };
-export const useModel = <T>(
-  model: T,
-): {
-  get: (key: keyof T) => T[keyof T];
-  set: (key: keyof T, val: T[keyof T]) => T[keyof T];
-  sub: (key: keyof T, cb: (val: T[keyof T]) => void) => void;
-} => {
-  const _model: T = model;
-  const _subscriptions: ModelSubscription<T>[] = [];
-
-  const subscriber = (key: keyof T, cb: (val: T[keyof T]) => void) => {
-    _subscriptions.push({
-      key,
-      cb,
-    });
-  };
-
-  const getter = (key: keyof T) => {
-    return _model[key];
-  };
-
-  const setter = (key: keyof T, val: T[keyof T]) => {
-    _model[key] = val;
-    _subscriptions.filter((i) => i.key === key).forEach((i) => i.cb(_model[key]));
-    return _model[key];
-  };
-
-  return {
-    get: getter,
-    set: setter,
-    sub: subscriber,
-  };
-};
+$('div', ['attr', 'id', 'test'], ['style', 'font', 'arial'])('hi');
 
 /**
  * Machine
@@ -221,3 +139,55 @@ export const useMachine = <Context, Actions, Messages extends { action: Actions;
     sub,
   };
 };
+
+// /**
+//  * A miniature "Event Bus"
+//  */
+// type Pub = (eventName: string) => void;
+// type Sub = (eventName: string, cb: Function) => void;
+// type Subscriber = { eventName: string; cb: Function };
+
+// export const useSignal = (..._: string[]): [Pub, Sub] => {
+//   const subscribers: Subscriber[] = [];
+//   const pub: Pub = (eventName: string) => subscribers.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
+//   const sub: Sub = (eventName: string, cb: Function) => subscribers.push({ eventName, cb });
+//   return [pub, sub];
+// };
+
+// /**
+//  * Model
+//  */
+// type ModelSubscription<T> = { key: keyof T; cb: (val: T[keyof T]) => void };
+// export const useModel = <T>(
+//   model: T,
+// ): {
+//   get: (key: keyof T) => T[keyof T];
+//   set: (key: keyof T, val: T[keyof T]) => T[keyof T];
+//   sub: (key: keyof T, cb: (val: T[keyof T]) => void) => void;
+// } => {
+//   const _model: T = model;
+//   const _subscriptions: ModelSubscription<T>[] = [];
+
+//   const subscriber = (key: keyof T, cb: (val: T[keyof T]) => void) => {
+//     _subscriptions.push({
+//       key,
+//       cb,
+//     });
+//   };
+
+//   const getter = (key: keyof T) => {
+//     return _model[key];
+//   };
+
+//   const setter = (key: keyof T, val: T[keyof T]) => {
+//     _model[key] = val;
+//     _subscriptions.filter((i) => i.key === key).forEach((i) => i.cb(_model[key]));
+//     return _model[key];
+//   };
+
+//   return {
+//     get: getter,
+//     set: setter,
+//     sub: subscriber,
+//   };
+// };
