@@ -1,6 +1,7 @@
 /**
  * Machine
  */
+
 type MachineSubscription<Context, Actions> = { action: Actions; cb: (context: Context) => void };
 export const useMachine = <Context, Actions, Messages extends { action: Actions; payload?: Partial<Context> }>(
   context: Context,
@@ -8,7 +9,7 @@ export const useMachine = <Context, Actions, Messages extends { action: Actions;
 ): {
   get: (key: keyof Context) => Context[keyof Context];
   pub: (message: Messages) => void;
-  sub: (key: Actions, cb: (context: Context) => Context) => void;
+  sub: (key: Actions, cb: (context: Context) => void) => void;
 } => {
   let _context: Context = context;
   const _subs: MachineSubscription<Context, Actions>[] = [];

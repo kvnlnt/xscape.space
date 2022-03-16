@@ -1,3 +1,12 @@
+import { Colors } from '@lib/Palette';
+import { Color as ColorFunc } from './colors';
+
+type Machine<Context, Actions, Messages> = {
+  get: (key: keyof Context) => Context[keyof Context];
+  pub: (message: Messages) => void;
+  sub: (key: Actions, cb: (context: Context) => Context) => void;
+};
+
 type OmitFirstArg<T> = T extends (x: any, ...args: infer P) => infer R ? (...args: P) => R : never;
 
 // Html Template engine
@@ -27,3 +36,16 @@ export const Html =
 
     return el;
   };
+
+// Features
+
+export const Attr = (el: HTMLElement, prop: string, val: string) => el.setAttribute(prop, String(val));
+export const Color = (el: HTMLElement, color: keyof typeof Colors) => (el.style.color = ColorFunc(color));
+export const OnClick = (el: HTMLElement, cb: () => void) => el.addEventListener('click', cb);
+export const OnMachine =
+  <Context, Action, Messages>(machine: Machine<Context, Action, Messages>) =>
+  (el: HTMLElement, action: Action, cb: (el: HTMLElement, context: Context) => any) =>
+    machine.sub(action, (context) => cb(el, context));
+export const OnTextInput = (el: HTMLInputElement, cb: (val: string) => void) =>
+  el.addEventListener('input', () => cb(el.value));
+export const FontSize = (el: HTMLElement, size: number) => (el.style.fontSize = `${size}px`);

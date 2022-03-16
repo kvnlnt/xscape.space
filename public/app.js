@@ -51,6 +51,12 @@
     });
     return el;
   };
+  var Attr = (el, prop, val) => el.setAttribute(prop, String(val));
+  var Color2 = (el, color) => el.style.color = Color(color);
+  var OnClick = (el, cb) => el.addEventListener("click", cb);
+  var OnMachine = (machine2) => (el, action, cb) => machine2.sub(action, (context) => cb(el, context));
+  var OnTextInput = (el, cb) => el.addEventListener("input", () => cb(el.value));
+  var FontSize = (el, size) => el.style.fontSize = `${size}px`;
 
   // src/app/lib/Feds.ts
   var useMachine = (context, machine2) => {
@@ -94,26 +100,14 @@
   });
   var DesignSystem = () => {
     const $ = Html({
-      color: (el, color) => el.style.color = Color(color),
-      font_size: (el, size) => el.style.fontSize = `${size}px`,
-      on_input: (el) => {
-        el.addEventListener("input", () => {
-          machine.pub({action: "TODO_UPDATE", payload: {todo: el.value}});
-        });
-      },
-      on_submit: (el) => {
-        el.addEventListener("click", (e) => {
-          e.preventDefault();
-          machine.pub({action: "SUBMIT"});
-        });
-      },
-      on_machine_message: (el, msg) => machine.sub(msg, (context) => {
-        if (msg === "TODO_UPDATE")
-          el.innerText = context.todo;
-        return null;
-      })
+      color: Color2,
+      attr: Attr,
+      on_click: OnClick,
+      on_machine: OnMachine(machine),
+      on_input: OnTextInput,
+      font_size: FontSize
     });
-    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["font_size", 18], ["on_machine_message", "TODO_UPDATE"])("..."), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input"])(), $("button", ["on_submit"])("Submit"))));
+    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["font_size", 18], ["on_machine", "TODO_UPDATE", (el, context) => el.innerText = context.todo])("..."), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input", (val) => machine.pub({action: "TODO_UPDATE", payload: {todo: val}})])(), $("button", ["on_click", () => machine.pub({action: "SUBMIT"})])("Submit"))));
     return template;
   };
 

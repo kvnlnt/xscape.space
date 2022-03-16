@@ -1,5 +1,4 @@
-import { Color, Colors } from '@framework/colors';
-import { Html } from '@framework/html';
+import { Attr, Color, FontSize, Html, OnClick, OnMachine, OnTextInput } from '@framework/html';
 import { useMachine } from '@lib/Feds';
 
 type Context = {
@@ -9,7 +8,6 @@ type Context = {
 
 type Messages = { action: 'TODO_UPDATE'; payload: Context } | { action: 'SUBMIT' };
 
-// machine
 const machine = useMachine<Context, Messages['action'], Messages>(
   { todo: 'test', state: 'IDLE' },
   (message: Messages, context: Context) => {
@@ -30,31 +28,25 @@ const machine = useMachine<Context, Messages['action'], Messages>(
 
 export const DesignSystem = () => {
   const $ = Html({
-    color: (el, color: keyof typeof Colors) => (el.style.color = Color(color)),
-    font_size: (el, size: number) => (el.style.fontSize = `${size}px`),
-    on_input: (el: HTMLInputElement) => {
-      el.addEventListener('input', () => {
-        machine.pub({ action: 'TODO_UPDATE', payload: { todo: el.value } });
-      });
-    },
-    on_submit: (el) => {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        machine.pub({ action: 'SUBMIT' });
-      });
-    },
-    on_machine_message: (el: HTMLElement, msg: 'TODO_UPDATE') =>
-      machine.sub(msg, (context) => {
-        if (msg === 'TODO_UPDATE') el.innerText = context.todo;
-        return null;
-      }),
+    color: Color,
+    attr: Attr,
+    on_click: OnClick,
+    on_machine: OnMachine<Context, Messages['action'], Messages>(machine),
+    on_input: OnTextInput,
+    font_size: FontSize,
   });
 
   const template = $('div')(
     $('h1', ['color', 'blue'])('ExampleApp'),
     $('h2', ['font_size', 24])('subtitle'),
-    $('div', ['font_size', 18], ['on_machine_message', 'TODO_UPDATE'])('...'),
-    $('form')($('fieldset')($('legend')('to dos'), $('input', ['on_input'])(), $('button', ['on_submit'])('Submit'))),
+    $('div', ['font_size', 18], ['on_machine', 'TODO_UPDATE', (el, context) => (el.innerText = context.todo)])('...'),
+    $('form')(
+      $('fieldset')(
+        $('legend')('to dos'),
+        $('input', ['on_input', (val) => machine.pub({ action: 'TODO_UPDATE', payload: { todo: val } })])(),
+        $('button', ['on_click', () => machine.pub({ action: 'SUBMIT' })])('Submit'),
+      ),
+    ),
   );
 
   return template;
