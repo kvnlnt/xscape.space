@@ -1,4 +1,17 @@
-import { Attr, Color, FontSize, Html, OnClick, OnMachine, OnTextInput } from '@framework/html';
+import {
+  Attr,
+  Color,
+  FontSize,
+  Html,
+  If,
+  OnClick,
+  OnMachine,
+  OnMachineAttr,
+  OnMachineClass,
+  OnMachineInnerHtml,
+  OnMachineInnerText,
+  OnTextInput,
+} from '@framework/html';
 import { useMachine } from '@lib/Feds';
 
 type Context = {
@@ -26,12 +39,21 @@ const machine = useMachine<Context, Messages['action'], Messages>(
   },
 );
 
+// const Machine =
+//   <T extends Record<State, (...args: any) => State>, State extends string, Context>(config: T) =>
+//   (context: Context) => {};
+
 export const DesignSystem = () => {
   const $ = Html({
     color: Color,
     attr: Attr,
+    if: If,
     on_click: OnClick,
-    on_machine: OnMachine<Context, Messages['action'], Messages>(machine),
+    machine: OnMachine<Context, Messages['action'], Messages>(machine),
+    machine_text: OnMachineInnerText<Context, Messages['action'], Messages>(machine),
+    machine_html: OnMachineInnerHtml<Context, Messages['action'], Messages>(machine),
+    machine_attr: OnMachineAttr<Context, Messages['action'], Messages>(machine),
+    machine_class: OnMachineClass<Context, Messages['action'], Messages>(machine),
     on_input: OnTextInput,
     font_size: FontSize,
   });
@@ -39,7 +61,14 @@ export const DesignSystem = () => {
   const template = $('div')(
     $('h1', ['color', 'blue'])('ExampleApp'),
     $('h2', ['font_size', 24])('subtitle'),
-    $('div', ['font_size', 18], ['on_machine', 'TODO_UPDATE', (el, context) => (el.innerText = context.todo)])('...'),
+    $('div', ['machine_text', 'TODO_UPDATE', (ctx) => ctx.todo])('...'),
+    $(
+      'div',
+      ['machine_html', 'TODO_UPDATE', (ctx) => (ctx.todo.length > 2 ? $('div')(ctx.todo + '---') : null)],
+      ['machine_attr', 'TODO_UPDATE', (ctx) => ['data-len', ctx.todo.length]],
+      ['machine_attr', 'TODO_UPDATE', (ctx) => ['data-len2', ctx.todo.length]],
+      ['machine_class', 'TODO_UPDATE', (ctx) => `one two-${ctx.todo.length}`],
+    )('...html'),
     $('form')(
       $('fieldset')(
         $('legend')('to dos'),

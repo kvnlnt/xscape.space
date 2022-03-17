@@ -42,7 +42,14 @@
   // src/app/framework/html.ts
   var Html = (features) => (tag, ...attrs) => (...children) => {
     const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
-    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
+    let render = true;
+    attrs.forEach(([attr, ...args]) => {
+      const feature = features[attr](el, ...args);
+      if (feature === false)
+        render = false;
+    });
+    if (!render)
+      return null;
     children.forEach((child) => {
       if (child instanceof Node)
         el.appendChild(child);
@@ -52,9 +59,26 @@
     return el;
   };
   var Attr = (el, prop, val) => el.setAttribute(prop, String(val));
+  var If = (_, condition) => condition;
   var Color2 = (el, color) => el.style.color = Color(color);
   var OnClick = (el, cb) => el.addEventListener("click", cb);
   var OnMachine = (machine2) => (el, action, cb) => machine2.sub(action, (context) => cb(el, context));
+  var OnMachineAttr = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
+    const [prop, val] = cb(context);
+    el.setAttribute(prop, String(val));
+  });
+  var OnMachineClass = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
+    el.className = cb(context);
+  });
+  var OnMachineInnerText = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
+    el.innerText = cb(context);
+  });
+  var OnMachineInnerHtml = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
+    el.innerHTML = "";
+    const content = cb(context);
+    if (content)
+      el.appendChild(content);
+  });
   var OnTextInput = (el, cb) => el.addEventListener("input", () => cb(el.value));
   var FontSize = (el, size) => el.style.fontSize = `${size}px`;
 
@@ -102,12 +126,17 @@
     const $ = Html({
       color: Color2,
       attr: Attr,
+      if: If,
       on_click: OnClick,
-      on_machine: OnMachine(machine),
+      machine: OnMachine(machine),
+      machine_text: OnMachineInnerText(machine),
+      machine_html: OnMachineInnerHtml(machine),
+      machine_attr: OnMachineAttr(machine),
+      machine_class: OnMachineClass(machine),
       on_input: OnTextInput,
       font_size: FontSize
     });
-    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["font_size", 18], ["on_machine", "TODO_UPDATE", (el, context) => el.innerText = context.todo])("..."), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input", (val) => machine.pub({action: "TODO_UPDATE", payload: {todo: val}})])(), $("button", ["on_click", () => machine.pub({action: "SUBMIT"})])("Submit"))));
+    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["machine_text", "TODO_UPDATE", (ctx) => ctx.todo])("..."), $("div", ["machine_html", "TODO_UPDATE", (ctx) => ctx.todo.length > 2 ? $("div")(ctx.todo + "---") : null], ["machine_attr", "TODO_UPDATE", (ctx) => ["data-len", ctx.todo.length]], ["machine_attr", "TODO_UPDATE", (ctx) => ["data-len2", ctx.todo.length]], ["machine_class", "TODO_UPDATE", (ctx) => `one two-${ctx.todo.length}`])("...html"), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input", (val) => machine.pub({action: "TODO_UPDATE", payload: {todo: val}})])(), $("button", ["on_click", () => machine.pub({action: "SUBMIT"})])("Submit"))));
     return template;
   };
 
