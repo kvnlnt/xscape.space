@@ -1,11 +1,6 @@
 import { Colors } from '@lib/Palette';
 import { Color as ColorFunc } from './colors';
-
-type Machine<Context, Actions, Messages> = {
-  get: (key: keyof Context) => Context[keyof Context];
-  pub: (message: Messages) => void;
-  sub: (key: Actions, cb: (context: Context) => any) => void;
-};
+import { Machine, MachineContext, MachineMessages } from './fsm';
 
 type OmitFirstArg<T> = T extends (x: any, ...args: infer P) => infer R ? (...args: P) => R : never;
 
@@ -49,39 +44,40 @@ export const Html =
 export const Attr = (el: HTMLElement, prop: string, val: string) => el.setAttribute(prop, String(val));
 export const If = (_: any, condition: boolean) => condition;
 export const Color = (el: HTMLElement, color: keyof typeof Colors) => (el.style.color = ColorFunc(color));
-export const OnClick = (el: HTMLElement, cb: () => void) => el.addEventListener('click', cb);
+export const OnClick = (el: HTMLElement, cb: () => void) =>
+  el.addEventListener('click', (e) => (e.preventDefault(), cb()));
 
 export const OnMachine =
-  <Context, Action, Messages>(machine: Machine<Context, Action, Messages>) =>
-  (el: HTMLElement, action: Action, cb: (el: HTMLElement, context: Context) => any) =>
+  <Context extends MachineContext, Messages extends MachineMessages>(machine: Machine<Context, Messages>) =>
+  (el: HTMLElement, action: Messages['action'], cb: (el: HTMLElement, context: Context) => any) =>
     machine.sub(action, (context) => cb(el, context));
 
 export const OnMachineAttr =
-  <Context, Action, Messages>(machine: Machine<Context, Action, Messages>) =>
-  (el: HTMLElement, action: Action, cb: (context: Context) => [string, string | number]) =>
+  <Context extends MachineContext, Messages extends MachineMessages>(machine: Machine<Context, Messages>) =>
+  (el: HTMLElement, action: Messages['action'], cb: (context: Context) => [string, string | number]) =>
     machine.sub(action, (context) => {
       const [prop, val] = cb(context);
       el.setAttribute(prop, String(val));
     });
 
 export const OnMachineClass =
-  <Context, Action, Messages>(machine: Machine<Context, Action, Messages>) =>
-  (el: HTMLElement, action: Action, cb: (context: Context) => string) =>
+  <Context extends MachineContext, Messages extends MachineMessages>(machine: Machine<Context, Messages>) =>
+  (el: HTMLElement, action: Messages['action'], cb: (context: Context) => string) =>
     machine.sub(action, (context) => {
       el.className = cb(context);
     });
 
 export const OnMachineInnerText =
-  <Context, Action, Messages>(machine: Machine<Context, Action, Messages>) =>
-  (el: HTMLElement, action: Action, cb: (context: Context) => any) =>
+  <Context extends MachineContext, Messages extends MachineMessages>(machine: Machine<Context, Messages>) =>
+  (el: HTMLElement, action: Messages['action'], cb: (context: Context) => any) =>
     machine.sub(action, (context) => {
       el.innerText = cb(context);
     });
 
 export const OnMachineInnerHtml =
-  <Context, Action, Messages>(machine: Machine<Context, Action, Messages>) =>
-  (el: HTMLElement, action: Action, cb: (context: Context) => any) =>
-    machine.sub(action, (context) => {
+  <Context extends MachineContext, Messages extends MachineMessages>(machine: Machine<Context, Messages>) =>
+  (el: HTMLElement, action: Messages['action'], cb: (context: Context) => any) =>
+    machine.sub(action, (context: Context) => {
       el.innerHTML = '';
       const content = cb(context);
       if (content) el.appendChild(content);

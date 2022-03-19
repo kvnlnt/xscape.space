@@ -18,6 +18,31 @@
     return [setHtml, setAttrs];
   }
 
+  // src/app/framework/fsm.ts
+  var FSM = (context, machine2) => {
+    let _context = context;
+    const _subs = [];
+    const sub = (action, cb) => {
+      _subs.push({
+        action,
+        cb
+      });
+    };
+    const get = (key) => {
+      return _context[key];
+    };
+    const pub = (action, contextUpdate) => {
+      _context = machine2({action, payload: contextUpdate}, _context);
+      _subs.filter((sub2) => sub2["action"] === action).forEach((i) => i.cb(_context));
+      return _context;
+    };
+    return {
+      get,
+      pub,
+      sub
+    };
+  };
+
   // src/app/framework/colors.ts
   var Colors = {
     black: [0, 0, 5],
@@ -61,7 +86,7 @@
   var Attr = (el, prop, val) => el.setAttribute(prop, String(val));
   var If = (_, condition) => condition;
   var Color2 = (el, color) => el.style.color = Color(color);
-  var OnClick = (el, cb) => el.addEventListener("click", cb);
+  var OnClick = (el, cb) => el.addEventListener("click", (e) => (e.preventDefault(), cb()));
   var OnMachine = (machine2) => (el, action, cb) => machine2.sub(action, (context) => cb(el, context));
   var OnMachineAttr = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
     const [prop, val] = cb(context);
@@ -82,33 +107,8 @@
   var OnTextInput = (el, cb) => el.addEventListener("input", () => cb(el.value));
   var FontSize = (el, size) => el.style.fontSize = `${size}px`;
 
-  // src/app/lib/Feds.ts
-  var useMachine = (context, machine2) => {
-    let _context = context;
-    const _subs = [];
-    const sub = (action, cb) => {
-      _subs.push({
-        action,
-        cb
-      });
-    };
-    const get = (key) => {
-      return _context[key];
-    };
-    const pub = (message) => {
-      _context = machine2(message, _context);
-      _subs.filter((sub2) => sub2["action"] === message["action"]).forEach((i) => i.cb(_context));
-      return _context;
-    };
-    return {
-      get,
-      pub,
-      sub
-    };
-  };
-
   // src/app/pages/DesignSystem.ts
-  var machine = useMachine({todo: "test", state: "IDLE"}, (message, context) => {
+  var machine = FSM({todo: "test", state: "IDLE"}, (message, context) => {
     switch (context.state) {
       case "IDLE":
         switch (message.action) {
@@ -116,7 +116,7 @@
             context = {...context, todo: message.payload.todo};
             break;
           case "SUBMIT":
-            console.log(context);
+            context = {...context, state: "INIT"};
             break;
         }
     }
@@ -128,15 +128,15 @@
       attr: Attr,
       if: If,
       on_click: OnClick,
-      machine: OnMachine(machine),
-      machine_text: OnMachineInnerText(machine),
-      machine_html: OnMachineInnerHtml(machine),
-      machine_attr: OnMachineAttr(machine),
-      machine_class: OnMachineClass(machine),
+      machine_sub: OnMachine(machine),
+      machine_sub_text: OnMachineInnerText(machine),
+      machine_sub_html: OnMachineInnerHtml(machine),
+      machine_sub_attr: OnMachineAttr(machine),
+      machine_sub_class: OnMachineClass(machine),
       on_input: OnTextInput,
       font_size: FontSize
     });
-    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["machine_text", "TODO_UPDATE", (ctx) => ctx.todo])("..."), $("div", ["machine_html", "TODO_UPDATE", (ctx) => ctx.todo.length > 2 ? $("div")(ctx.todo + "---") : null], ["machine_attr", "TODO_UPDATE", (ctx) => ["data-len", ctx.todo.length]], ["machine_attr", "TODO_UPDATE", (ctx) => ["data-len2", ctx.todo.length]], ["machine_class", "TODO_UPDATE", (ctx) => `one two-${ctx.todo.length}`])("...html"), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input", (val) => machine.pub({action: "TODO_UPDATE", payload: {todo: val}})])(), $("button", ["on_click", () => machine.pub({action: "SUBMIT"})])("Submit"))));
+    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["machine_sub_text", "TODO_UPDATE", (ctx) => ctx.todo])("..."), $("div", ["machine_sub_html", "TODO_UPDATE", (ctx) => ctx.todo.length > 2 ? $("div")(ctx.todo + "---") : null], ["machine_sub_attr", "TODO_UPDATE", (ctx) => ["data-len", ctx.todo.length]], ["machine_sub_attr", "TODO_UPDATE", (ctx) => ["data-len2", ctx.todo]], ["machine_sub_class", "TODO_UPDATE", (ctx) => `one two-${ctx.todo.length}`])("...html"), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input", (val) => machine.pub("TODO_UPDATE", {todo: val})])(), $("button", ["on_click", () => machine.pub("SUBMIT")])("Submit"))));
     return template;
   };
 
