@@ -19,9 +19,11 @@ const html = Html({
   style: Style,
 });
 
-export const Character = (char: keyof typeof CHAR) => {
+type CharacterProps = { char: keyof typeof CHAR };
+
+export const Character = ({ char }: CharacterProps) => {
   const t = html('div', ['css', css('wrapper')])(Bar(CHAR[char][0]), Bar(CHAR[char][1]), Bar(CHAR[char][2]));
   return t;
 };
 
-export const CharacterList = Object.entries(CHAR).map(([k]) => Character(k));
+export const CharacterList = Object.entries(CHAR).map(([char]) => Character({ char }));

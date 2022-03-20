@@ -115,47 +115,6 @@
   var ClassList = (el, classes) => el.className = classes;
   var Style = (el, style) => el.setAttribute("style", style);
 
-  // src/app/components/Spectralizer/Bar.ts
-  var css = CSS({
-    wrapper: [
-      ["display", "flex"],
-      ["flexDirection", "row"],
-      ["alignItems", "center"],
-      ["justifyContent", "center"],
-      ["height", "100%"],
-      ["cursor", "pointer"]
-    ],
-    bar_bg: [
-      ["backgroundColor", Color("white", 0, 0.01)],
-      ["marginLeft", "5px"],
-      ["borderRadius", "14px"],
-      ["display", "flex"],
-      ["flexDirection", "column"],
-      ["alignItems", "center"],
-      ["justifyContent", "center"],
-      ["height", "100%"],
-      ["width", "9px"],
-      ["position", "relative"]
-    ],
-    bar: [
-      ["backgroundColor", Color("purple")],
-      ["borderRadius", "3px"],
-      ["width", "100%"],
-      ["transition", "all 0.50s"],
-      ["height", "0%"],
-      ["position", "absolute"]
-    ]
-  });
-  var html = Html({
-    css: ClassList,
-    style: Style
-  });
-  var Bar = (bar) => {
-    const [h1, o1, h2, o2, h3, o3] = bar;
-    const t = html("div", ["css", css("wrapper")])(html("div", ["css", css("bar_bg")])(html("div", ["css", css("bar")], ["style", `height:${h1}%;top:${o1}%`])(), html("div", ["css", css("bar")], ["style", `height:${h2}%;top:${o2}%`])(), html("div", ["css", css("bar")], ["style", `height:${h3}%;top:${o3}%`])()));
-    return t;
-  };
-
   // src/core/data/Letters.ts
   var CHAR = {
     0: [
@@ -345,6 +304,47 @@
     ]
   };
 
+  // src/app/components/Spectralizer/Bar.ts
+  var css = CSS({
+    bar_wrapper: [
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["cursor", "pointer"]
+    ],
+    bar_bg: [
+      ["backgroundColor", Color("white", 0, 0.01)],
+      ["marginLeft", "5px"],
+      ["borderRadius", "14px"],
+      ["display", "flex"],
+      ["flexDirection", "column"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["width", "9px"],
+      ["position", "relative"]
+    ],
+    bar: [
+      ["backgroundColor", Color("purple")],
+      ["borderRadius", "3px"],
+      ["width", "100%"],
+      ["transition", "all 0.50s"],
+      ["height", "0%"],
+      ["position", "absolute"]
+    ]
+  });
+  var html = Html({
+    css: ClassList,
+    style: Style
+  });
+  var Bar = (bar) => {
+    const [h1, o1, h2, o2, h3, o3] = bar;
+    const t = html("div", ["css", css("bar_wrapper")])(html("div", ["css", css("bar_bg")])(html("div", ["css", css("bar")], ["style", `height:${h1}%;top:${o1}%`])(), html("div", ["css", css("bar")], ["style", `height:${h2}%;top:${o2}%`])(), html("div", ["css", css("bar")], ["style", `height:${h3}%;top:${o3}%`])()));
+    return t;
+  };
+
   // src/app/components/Spectralizer/Character.ts
   var css2 = CSS({
     wrapper: [
@@ -360,14 +360,35 @@
     css: ClassList,
     style: Style
   });
-  var Character = (char) => {
+  var Character = ({char}) => {
     const t = html2("div", ["css", css2("wrapper")])(Bar(CHAR[char][0]), Bar(CHAR[char][1]), Bar(CHAR[char][2]));
     return t;
   };
-  var CharacterList = Object.entries(CHAR).map(([k]) => Character(k));
+  var CharacterList = Object.entries(CHAR).map(([char]) => Character({char}));
+
+  // src/app/components/Spectralizer/Display.ts
+  var css3 = CSS({
+    display_wrapper: [
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["cursor", "pointer"]
+    ]
+  });
+  var html3 = Html({
+    css: ClassList,
+    style: Style
+  });
+  var Display = ({numOfBars, readings}) => {
+    const emptyBars = Array(numOfBars).fill(0).map(() => Bar([0, 0, 0, 0, 0, 0]));
+    const t = html3("div", ["css", css3("display_wrapper")])(...emptyBars);
+    return t;
+  };
 
   // src/app/pages/DesignSystem.ts
-  var css3 = CSS({
+  var css4 = CSS({
     container: [["backgroundColor", Color("black")]],
     jumbotron_container: [
       ["gridColumn", "1/-1"],
@@ -394,11 +415,11 @@
       ["padding", "10px"]
     ]
   });
-  var html3 = Html({
+  var html4 = Html({
     css: ClassList
   });
   var DesignSystem = () => {
-    const template = html3("div", ["css", css3("container")])(html3("div", ["css", css3("letter_container")])(html3("div", ["css", css3("jumbotron_container")])(Character("J"), Bar([20, 40, 0, 0, 0, 0]), Character("U"), Bar([20, 40, 0, 0, 0, 0]), Character("M"), Bar([20, 40, 0, 0, 0, 0]), Character("B"), Bar([20, 40, 0, 0, 0, 0]), Character("O"), Bar([20, 40, 0, 0, 0, 0]), Character("T"), Bar([20, 40, 0, 0, 0, 0]), Character("R"), Bar([20, 40, 0, 0, 0, 0]), Character("O"), Bar([20, 40, 0, 0, 0, 0]), Character("N")), ...CharacterList.map((character) => html3("div", ["css", css3("letter")])(character))));
+    const template = html4("div", ["css", css4("container")])(html4("div", ["css", css4("letter_container")])(html4("div", ["css", css4("jumbotron_container")])(Display({numOfBars: 20, readings: []})), ...CharacterList.map((character) => html4("div", ["css", css4("letter")])(character))));
     return template;
   };
 

@@ -191,4 +191,4 @@ export const CHAR: Record<
     [40, 30, 0, 0, 0, 0],
     [40, 0, 20, 80, 0, 0],
   ],
-};
+} as const;

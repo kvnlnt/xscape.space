@@ -1,8 +1,8 @@
 import { Color } from '@framework/colors';
 import { CSS } from '@framework/css';
 import { ClassList, Html } from '@framework/html';
-import { Bar } from '../components/Spectralizer/Bar';
-import { Character, CharacterList } from '../components/Spectralizer/Character';
+import { CharacterList } from '../components/Spectralizer/Character';
+import { Display } from '../components/Spectralizer/Display';
 
 const css = CSS({
   container: [['backgroundColor', Color('black')]],
@@ -39,25 +39,7 @@ const html = Html({
 export const DesignSystem = () => {
   const template = html('div', ['css', css('container')])(
     html('div', ['css', css('letter_container')])(
-      html('div', ['css', css('jumbotron_container')])(
-        Character('J'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('U'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('M'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('B'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('O'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('T'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('R'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('O'),
-        Bar([20, 40, 0, 0, 0, 0]),
-        Character('N'),
-      ),
+      html('div', ['css', css('jumbotron_container')])(Display({ numOfBars: 20, readings: [] })),
       ...CharacterList.map((character) => html('div', ['css', css('letter')])(character)),
     ),
   );

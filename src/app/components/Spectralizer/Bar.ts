@@ -3,7 +3,7 @@ import { CSS } from '@framework/css';
 import { ClassList, Html, Style } from '@framework/html';
 
 const css = CSS({
-  wrapper: [
+  bar_wrapper: [
     ['display', 'flex'],
     ['flexDirection', 'row'],
     ['alignItems', 'center'],
@@ -40,11 +40,11 @@ const html = Html({
 
 type BarHeight = number;
 type BarOffset = number;
-type BarProps = [BarHeight, BarOffset, BarHeight, BarOffset, BarHeight, BarOffset];
+export type BarProps = [BarHeight, BarOffset, BarHeight, BarOffset, BarHeight, BarOffset];
 
 export const Bar = (bar: BarProps) => {
   const [h1, o1, h2, o2, h3, o3] = bar;
-  const t = html('div', ['css', css('wrapper')])(
+  const t = html('div', ['css', css('bar_wrapper')])(
     html('div', ['css', css('bar_bg')])(
       html('div', ['css', css('bar')], ['style', `height:${h1}%;top:${o1}%`])(),
       html('div', ['css', css('bar')], ['style', `height:${h2}%;top:${o2}%`])(),
