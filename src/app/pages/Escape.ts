@@ -1,9 +1,9 @@
-import ChillSpace from '@domain/data/ChillSpace';
-import DeepSpace from '@domain/data/DeepSpace';
-import ThinkSpace from '@domain/data/ThinkSpace';
 import { useAudio } from '@lib/Audio';
 import { useSlider } from 'src/app/features/Slider';
 import { useSpace } from 'src/app/features/Space';
+import ChillSpace from 'src/core/data/ChillSpace';
+import DeepSpace from 'src/core/data/DeepSpace';
+import ThinkSpace from 'src/core/data/ThinkSpace';
 import { useDom } from '../lib/Dom';
 import { useHtml } from '../lib/Html';
 import { useKeyPress } from '../lib/KeyPress';

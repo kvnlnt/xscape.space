@@ -1,77 +1,51 @@
+import { Color } from '@framework/colors';
+import { CSS } from '@framework/css';
 import { FSM } from '@framework/fsm';
-import {
-  Attr,
-  Color,
-  FontSize,
-  Html,
-  If,
-  OnClick,
-  OnMachine,
-  OnMachineAttr,
-  OnMachineClass,
-  OnMachineInnerHtml,
-  OnMachineInnerText,
-  OnTextInput,
-} from '@framework/html';
+import { ClassList, Html } from '@framework/html';
+import { CHAR, Spectrum } from '../components/Spectral';
 
-type Context = {
-  todo: string;
-  state: 'INIT' | 'IDLE';
-};
-
-type Messages = { action: 'TODO_UPDATE'; payload: Context } | { action: 'SUBMIT' };
-
-const machine = FSM<Context, Messages>({ todo: 'test', state: 'IDLE' }, (message, context) => {
-  switch (context.state) {
-    case 'IDLE':
-      switch (message.action) {
-        case 'TODO_UPDATE':
-          context = { ...context, todo: message.payload.todo };
-          break;
-        case 'SUBMIT':
-          context = { ...context, state: 'INIT' };
-          break;
-      }
-  }
-  return context;
+const css = CSS({
+  container: [
+    ['display', 'grid'],
+    ['height', '100vh'],
+    ['width', '100vw'],
+    ['gridTemplateColumns', 'repeat(5, 1fr)'],
+    ['gridTemplateRows', 'auto'],
+    ['backgroundColor', Color('black')],
+    ['gridGap', '10px'],
+    ['padding', '10px'],
+    ['boxSizing', 'border-box'],
+    ['color', Color('white')],
+  ],
+  letter: [
+    ['display', 'flex'],
+    ['border', '1px solid white'],
+    ['alignItems', 'center'],
+    ['justifyContent', 'center'],
+    ['padding', '10px'],
+  ],
 });
 
+type DSContext = { state: 'INIT' };
+type DSMessages = { action: 'EXIT' };
+
 export const DesignSystem = () => {
-  const $ = Html({
-    color: Color,
-    attr: Attr,
-    if: If,
-    on_click: OnClick,
-    machine_sub: OnMachine<Context, Messages>(machine),
-    machine_sub_text: OnMachineInnerText<Context, Messages>(machine),
-    machine_sub_html: OnMachineInnerHtml<Context, Messages>(machine),
-    machine_sub_attr: OnMachineAttr<Context, Messages>(machine),
-    machine_sub_class: OnMachineClass<Context, Messages>(machine),
-    on_input: OnTextInput,
-    font_size: FontSize,
+  const fsm = FSM<DSContext, DSMessages>({ state: 'INIT' }, (message, context) => {
+    switch (context.state) {
+      case 'INIT':
+        switch (message.action) {
+        }
+    }
+    return context;
   });
 
-  const template = $('div')(
-    $('h1', ['color', 'blue'])('ExampleApp'),
-    $('h2', ['font_size', 24])('subtitle'),
-    $('div', ['machine_sub_text', 'TODO_UPDATE', (ctx) => ctx.todo])('...'),
-    $(
-      'div',
-      ['machine_sub_html', 'TODO_UPDATE', (ctx) => (ctx.todo.length > 2 ? $('div')(ctx.todo + '---') : null)],
-      ['machine_sub_attr', 'TODO_UPDATE', (ctx) => ['data-len', ctx.todo.length]],
-      ['machine_sub_attr', 'TODO_UPDATE', (ctx) => ['data-len2', ctx.todo]],
-      ['machine_sub_class', 'TODO_UPDATE', (ctx) => `one two-${ctx.todo.length}`],
-    )('...html'),
-    $('form')(
-      $('fieldset')(
-        $('legend')('to dos'),
-        $('input', ['on_input', (val) => machine.pub('TODO_UPDATE', { todo: val })])(),
-        $('button', ['on_click', () => machine.pub('SUBMIT')])('Submit'),
-      ),
-    ),
+  const $ = Html({
+    css: ClassList,
+  });
+
+  const template = $('div', ['css', css('container')])(
+    ...Object.entries(CHAR).map(([k]) => $('div', ['css', css('letter')])(Spectrum(k))),
   );
 
   return template;
 };
-
-// const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';

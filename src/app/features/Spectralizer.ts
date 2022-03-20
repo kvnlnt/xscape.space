@@ -1,5 +1,5 @@
-import { Space } from '@domain/types';
 import { html, useHtml } from '@lib/Html';
+import { Space } from 'src/core/types';
 import { css } from './Spectralizer.styles';
 
 type Spectrum = number[];

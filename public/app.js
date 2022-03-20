@@ -18,31 +18,6 @@
     return [setHtml, setAttrs];
   }
 
-  // src/app/framework/fsm.ts
-  var FSM = (context, machine2) => {
-    let _context = context;
-    const _subs = [];
-    const sub = (action, cb) => {
-      _subs.push({
-        action,
-        cb
-      });
-    };
-    const get = (key) => {
-      return _context[key];
-    };
-    const pub = (action, contextUpdate) => {
-      _context = machine2({action, payload: contextUpdate}, _context);
-      _subs.filter((sub2) => sub2["action"] === action).forEach((i) => i.cb(_context));
-      return _context;
-    };
-    return {
-      get,
-      pub,
-      sub
-    };
-  };
-
   // src/app/framework/colors.ts
   var Colors = {
     black: [0, 0, 5],
@@ -64,17 +39,96 @@
     return hsla;
   };
 
+  // src/app/framework/css.ts
+  var Breakpoints;
+  (function(Breakpoints2) {
+    Breakpoints2[Breakpoints2["MOBILE"] = 0] = "MOBILE";
+    Breakpoints2[Breakpoints2["TABLET"] = 720] = "TABLET";
+    Breakpoints2[Breakpoints2["DESKTOP"] = 1200] = "DESKTOP";
+  })(Breakpoints || (Breakpoints = {}));
+  function uuid(str = "xxxxxxxx") {
+    function getRandomSymbol(symbol) {
+      let array;
+      if (symbol === "y") {
+        array = ["8", "9", "a", "b"];
+        return array[Math.floor(Math.random() * array.length)];
+      }
+      array = new Uint8Array(1);
+      window.crypto.getRandomValues(array);
+      return (array[0] % 16).toString(16);
+    }
+    return str.replace(/[xy]/g, getRandomSymbol);
+  }
+  var CSS = (declarations) => {
+    const id = uuid();
+    const style = document.createElement("style");
+    style.id = id;
+    document.getElementsByTagName("head")[0].appendChild(style);
+    const render = () => {
+      style.innerHTML = "";
+      const styles = [];
+      const addStyle = (breakpoint = 0) => {
+        styles.push(`@media screen and (min-width:${breakpoint}px) {
+`);
+        const suffix = {
+          [0]: "",
+          [720]: "_on_tablet",
+          [1200]: "_on_desktop"
+        };
+        Object.entries(declarations).forEach(([selector, declarations2]) => {
+          styles.push(`.${selector}${suffix[breakpoint]}_${id} {`);
+          declarations2.forEach(([prop, val, render2 = true]) => render2 ? styles.push(`${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}:${val};`) : null);
+          styles.push(`}
+`);
+          styles.push(`.${selector}_on_hover${suffix[breakpoint]}_${id}:hover {`);
+          declarations2.forEach(([prop, val, render2 = true]) => render2 ? styles.push(`${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}:${val};`) : null);
+          styles.push(`}
+`);
+        });
+        styles.push(`}
+`);
+      };
+      addStyle(0);
+      addStyle(720);
+      addStyle(1200);
+      style.innerHTML = styles.join("");
+    };
+    render();
+    const getter = (...list) => {
+      return list.filter((i) => i !== null).map((item) => `${item}_${id}`).join(" ");
+    };
+    return getter;
+  };
+
+  // src/app/framework/fsm.ts
+  var FSM = (context, machine) => {
+    let _context = context;
+    const _subs = [];
+    const sub = (action, cb) => {
+      _subs.push({
+        action,
+        cb
+      });
+    };
+    const get = (key) => {
+      return _context[key];
+    };
+    const pub = (action, contextUpdate) => {
+      _context = machine({action, payload: contextUpdate}, _context);
+      _subs.filter((sub2) => sub2["action"] === action).forEach((i) => i.cb(_context));
+      return _context;
+    };
+    return {
+      get,
+      pub,
+      sub
+    };
+  };
+
   // src/app/framework/html.ts
   var Html = (features) => (tag, ...attrs) => (...children) => {
     const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
-    let render = true;
-    attrs.forEach(([attr, ...args]) => {
-      const feature = features[attr](el, ...args);
-      if (feature === false)
-        render = false;
-    });
-    if (!render)
-      return null;
+    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
     children.forEach((child) => {
       if (child instanceof Node)
         el.appendChild(child);
@@ -83,60 +137,271 @@
     });
     return el;
   };
-  var Attr = (el, prop, val) => el.setAttribute(prop, String(val));
-  var If = (_, condition) => condition;
-  var Color2 = (el, color) => el.style.color = Color(color);
-  var OnClick = (el, cb) => el.addEventListener("click", (e) => (e.preventDefault(), cb()));
-  var OnMachine = (machine2) => (el, action, cb) => machine2.sub(action, (context) => cb(el, context));
-  var OnMachineAttr = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
-    const [prop, val] = cb(context);
-    el.setAttribute(prop, String(val));
+  var ClassList = (el, classes) => el.className = classes;
+  var Style = (el, style) => el.setAttribute("style", style);
+
+  // src/app/components/Spectral.ts
+  var css = CSS({
+    wrapper: [
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["cursor", "pointer"]
+    ],
+    bar_bg: [
+      ["backgroundColor", Color("white", 0, 0.01)],
+      ["marginLeft", "5px"],
+      ["borderRadius", "14px"],
+      ["display", "flex"],
+      ["flexDirection", "column"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["width", "12px"],
+      ["position", "relative"]
+    ],
+    bar: [
+      ["backgroundColor", Color("purple")],
+      ["borderRadius", "7px"],
+      ["width", "100%"],
+      ["transition", "all 0.50s"],
+      ["height", "0%"],
+      ["position", "absolute"]
+    ]
   });
-  var OnMachineClass = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
-    el.className = cb(context);
+  var $ = Html({
+    css: ClassList,
+    style: Style
   });
-  var OnMachineInnerText = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
-    el.innerText = cb(context);
-  });
-  var OnMachineInnerHtml = (machine2) => (el, action, cb) => machine2.sub(action, (context) => {
-    el.innerHTML = "";
-    const content = cb(context);
-    if (content)
-      el.appendChild(content);
-  });
-  var OnTextInput = (el, cb) => el.addEventListener("input", () => cb(el.value));
-  var FontSize = (el, size) => el.style.fontSize = `${size}px`;
+  var SpectralBar = (bar) => {
+    const [h1, o1, h2, o2, h3, o3] = bar;
+    const t = $("div", ["css", css("wrapper")])($("div", ["css", css("bar_bg")])($("div", ["css", css("bar")], ["style", `height:${h1}%;top:${o1}%`])(), $("div", ["css", css("bar")], ["style", `height:${h2}%;top:${o2}%`])(), $("div", ["css", css("bar")], ["style", `height:${h3}%;top:${o3}%`])()));
+    return t;
+  };
+  var Spectrum = (char) => {
+    const t = $("div", ["css", css("wrapper")])(SpectralBar(CHAR[char][0]), SpectralBar(CHAR[char][1]), SpectralBar(CHAR[char][2]));
+    return t;
+  };
+  var CHAR = {
+    0: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 0, 0],
+      [0, 0, 100, 0, 0, 0]
+    ],
+    1: [
+      [20, 0, 20, 80, 0, 0],
+      [100, 0, 0, 0, 0, 0],
+      [0, 0, 20, 80, 0, 0]
+    ],
+    2: [
+      [20, 0, 60, 40, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [60, 0, 20, 80, 0, 0]
+    ],
+    3: [
+      [20, 0, 20, 80, 20, 40],
+      [20, 0, 20, 80, 20, 40],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    4: [
+      [60, 0, 0, 0, 0, 0],
+      [20, 40, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    5: [
+      [60, 0, 20, 80, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [20, 0, 60, 40, 0, 0]
+    ],
+    6: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [20, 0, 60, 40, 0, 0]
+    ],
+    7: [
+      [20, 0, 0, 0, 0, 0],
+      [20, 0, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    8: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    9: [
+      [60, 0, 0, 0, 0, 0],
+      [20, 0, 20, 40, 0, 0],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    A: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 40, 0, 0],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    B: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    C: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 0, 0],
+      [20, 0, 20, 80, 0, 0]
+    ],
+    D: [
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 0, 0],
+      [100, 0, 0, 0, 0, 0]
+    ],
+    E: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    F: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    G: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    H: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    I: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    J: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    K: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    L: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    M: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    N: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    O: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    P: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    Q: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    R: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    S: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    T: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    U: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    V: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    W: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    X: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    Y: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ],
+    Z: [
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
+    ]
+  };
 
   // src/app/pages/DesignSystem.ts
-  var machine = FSM({todo: "test", state: "IDLE"}, (message, context) => {
-    switch (context.state) {
-      case "IDLE":
-        switch (message.action) {
-          case "TODO_UPDATE":
-            context = {...context, todo: message.payload.todo};
-            break;
-          case "SUBMIT":
-            context = {...context, state: "INIT"};
-            break;
-        }
-    }
-    return context;
+  var css2 = CSS({
+    container: [
+      ["display", "grid"],
+      ["height", "100vh"],
+      ["width", "100vw"],
+      ["gridTemplateColumns", "repeat(5, 1fr)"],
+      ["gridTemplateRows", "auto"],
+      ["backgroundColor", Color("black")],
+      ["gridGap", "10px"],
+      ["padding", "10px"],
+      ["boxSizing", "border-box"],
+      ["color", Color("white")]
+    ],
+    letter: [
+      ["display", "flex"],
+      ["border", "1px solid white"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["padding", "10px"]
+    ]
   });
   var DesignSystem = () => {
-    const $ = Html({
-      color: Color2,
-      attr: Attr,
-      if: If,
-      on_click: OnClick,
-      machine_sub: OnMachine(machine),
-      machine_sub_text: OnMachineInnerText(machine),
-      machine_sub_html: OnMachineInnerHtml(machine),
-      machine_sub_attr: OnMachineAttr(machine),
-      machine_sub_class: OnMachineClass(machine),
-      on_input: OnTextInput,
-      font_size: FontSize
+    const fsm = FSM({state: "INIT"}, (message, context) => {
+      switch (context.state) {
+        case "INIT":
+          switch (message.action) {
+          }
+      }
+      return context;
     });
-    const template = $("div")($("h1", ["color", "blue"])("ExampleApp"), $("h2", ["font_size", 24])("subtitle"), $("div", ["machine_sub_text", "TODO_UPDATE", (ctx) => ctx.todo])("..."), $("div", ["machine_sub_html", "TODO_UPDATE", (ctx) => ctx.todo.length > 2 ? $("div")(ctx.todo + "---") : null], ["machine_sub_attr", "TODO_UPDATE", (ctx) => ["data-len", ctx.todo.length]], ["machine_sub_attr", "TODO_UPDATE", (ctx) => ["data-len2", ctx.todo]], ["machine_sub_class", "TODO_UPDATE", (ctx) => `one two-${ctx.todo.length}`])("...html"), $("form")($("fieldset")($("legend")("to dos"), $("input", ["on_input", (val) => machine.pub("TODO_UPDATE", {todo: val})])(), $("button", ["on_click", () => machine.pub("SUBMIT")])("Submit"))));
+    const $2 = Html({
+      css: ClassList
+    });
+    const template = $2("div", ["css", css2("container")])(...Object.entries(CHAR).map(([k]) => $2("div", ["css", css2("letter")])(Spectrum(k))));
     return template;
   };
 

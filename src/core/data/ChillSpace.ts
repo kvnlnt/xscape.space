@@ -1,7 +1,7 @@
-import { Space } from '@domain/types';
+import { Space } from 'src/core/types';
 
 export default {
-  name: 'deep',
+  name: 'chill',
   songs: [
     {
       artist: 'rapT0R',

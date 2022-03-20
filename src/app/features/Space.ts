@@ -1,6 +1,6 @@
-import { Space } from '@domain/types';
 import { AudioMachine } from '@lib/Audio';
 import { html, useHtml } from '@lib/Html';
+import { Space } from 'src/core/types';
 import { css } from './Space.styles';
 import { useSpectralizer } from './Spectralizer';
 

@@ -1,6 +1,6 @@
-import { Song, Space } from '@domain/types';
 import { html, useHtml } from '@lib/Html';
 import { useKeyPress } from '@lib/KeyPress';
+import { Song, Space } from 'src/core/types';
 import { css } from './Playlist.styles';
 
 type PlayListProps = { space: Space; callback: (songNumber: number) => void };

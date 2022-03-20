@@ -1,12 +1,12 @@
-import { Space } from '@domain/types';
+import { Space } from 'src/core/types';
 
 export default {
-  name: 'think',
+  name: 'deep',
   songs: [
     {
-      artist: 'dfaasf as as',
+      artist: 'rapT0R',
       artistLink: 'https://soundcloud.com/linttraprecords/sets/black-wolf-beats',
-      songName: 'asdf fasdf asdfsa',
+      songName: "Don't be sad bro",
       mp3Url: 'https://s3.us-west-2.amazonaws.com/files.kevinlint.com/audio/lincoln/sad.mp3',
     },
     {

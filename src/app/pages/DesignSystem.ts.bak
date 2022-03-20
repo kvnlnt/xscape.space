@@ -1,166 +1,77 @@
-namespace $ {
-  type HtmlNode = HTMLElement | string | number | SVGElement;
-  type AttrFeature = ['attr', string, string];
-  type OnSubmitFeature = ['on-submit', string, string];
-  type StyleFeature = ['style', string, string];
-  type Feature = AttrFeature | OnSubmitFeature | StyleFeature;
-  type HtmlFeature = (feature: Feature) => (el: HtmlNode) => void;
+import { FSM } from '@framework/fsm';
+import {
+  Attr,
+  Color,
+  FontSize,
+  Html,
+  If,
+  OnClick,
+  OnMachine,
+  OnMachineAttr,
+  OnMachineClass,
+  OnMachineInnerHtml,
+  OnMachineInnerText,
+  OnTextInput,
+} from '@framework/html';
 
-  // html element
-  export const _ =
-    <T extends keyof Partial<HTMLElementTagNameMap>, U extends Feature[0]>(
-      tag: T,
-      ...featureArgs: (U extends 'attr' ? AttrFeature : U extends 'on-submit' ? OnSubmitFeature : StyleFeature)[]
-    ) =>
-    (...children: HtmlNode[]) => {
-      const el = document.createElementNS('http://www.w3.org/1999/xhtml', tag);
-      // features.forEach((feature) => feature(el));
-      children.forEach((child) => {
-        if (child instanceof Node) el.appendChild(child);
-        if (typeof child === 'string' || typeof child === 'number') el.innerHTML += child;
-      });
-      return el;
-    };
-
-  const h1 = _(
-    'h1',
-    ['style', 'fontSize', '12px'],
-    ['style', 'color', 'blue'],
-    ['on-submit', 'id', 'asdf'],
-    ['style', 'asdf', 'asdf'],
-  )();
-
-  // Html Attribute
-  export const Attr =
-    (...props: [string, string | number][]) =>
-    (el: HTMLElement) => {
-      console.log(el);
-      props.forEach(([k, v]) => el.setAttribute(k, String(v)));
-    };
-
-  export const OnInput =
-    (...cbs: ((value: string) => void)[]) =>
-    (el: HTMLElement) => {
-      el.addEventListener('input', (evt: InputEvent) =>
-        cbs.forEach((cb) => cb((evt.target as HTMLInputElement).value)),
-      );
-    };
-
-  export const OnSubmit = (cb: (evt: SubmitEvent) => void) => (el: HTMLFormElement) => {
-    el.addEventListener('submit', (evt: SubmitEvent) => {
-      evt.preventDefault();
-      cb(evt);
-    });
-  };
-
-  // Console debugger
-  export const Console = (...strings: string[]) => console.log(...strings);
-
-  // Message Pub
-  type Subscription = { eventName: string; cb: Function };
-  const subscriptions: Subscription[] = [];
-  export const Pub = (eventName: string) => () =>
-    subscriptions.filter((i) => i.eventName === eventName).forEach((i) => i.cb());
-  export const Sub = (eventName: string, cb: Function) => (el: HTMLElement) =>
-    subscriptions.push({ eventName, cb: () => cb(el) });
-
-  // Styles
-  export const Style =
-    (...styles: [keyof CSSStyleDeclaration, string][]) =>
-    (el: HTMLElement) => {
-      const currStyle = el.getAttribute('style') ? el.getAttribute('style').split(';') : [];
-      el.setAttribute(
-        'style',
-        [
-          ...currStyle,
-          ...styles.map(([k, v]) => `${(k as string).replace(/([A-Z])/g, '-$1').toLowerCase()}:${v}`),
-        ].join(';'),
-      );
-    };
-}
-
-const { _, Attr, OnInput, Pub, Sub, Console, Style, OnSubmit } = $;
-
-enum Events {
-  TODO_CHANGE = 'TODO_CHANGE',
-}
-
-export const DesignSystem = () => {
-  let todo = '';
-  const setTodo = (val: string) => (todo = val);
-
-  // const h2 = _(
-  //   'h2',
-  //   Attr(['data-id', 1]),
-  //   Style(['fontSize', '20px'], ['color', 'green']),
-  //   Style(['borderBottom', '1px solid green']),
-  // );
-
-  // const reader = _(
-  //   'div',
-  //   Attr(['data-id', 1]),
-  //   Sub(Events.TODO_CHANGE, (el: HTMLElement) => (el.innerText = todo)),
-  // );
-
-  // const form = _(
-  //   'form',
-  //   OnSubmit((evt) => console.log(evt.target.input.value, todo)),
-  // );
-
-  // return _('div')(
-  //   h1('ExampleApp'),
-  //   h2('subtitle'),
-  //   reader(''),
-  //   form(
-  //     _('fieldset')(
-  //       _('legend')('Todos'),
-  //       _('label')('todo'),
-  //       _('input', Attr(['data-id', 1]), Attr(['name', 'input']), OnInput(setTodo, Pub(Events.TODO_CHANGE)))(),
-  //       _('button', Attr(['type', 'submit']))('Submit'),
-  //     ),
-  //   ),
-  // );
+type Context = {
+  todo: string;
+  state: 'INIT' | 'IDLE';
 };
 
-// import { useCss } from '@lib/Css';
-// import { html } from '@lib/Html';
-// import { usePalette } from '@lib/Palette';
+type Messages = { action: 'TODO_UPDATE'; payload: Context } | { action: 'SUBMIT' };
 
-// const [palette] = usePalette();
+const machine = FSM<Context, Messages>({ todo: 'test', state: 'IDLE' }, (message, context) => {
+  switch (context.state) {
+    case 'IDLE':
+      switch (message.action) {
+        case 'TODO_UPDATE':
+          context = { ...context, todo: message.payload.todo };
+          break;
+        case 'SUBMIT':
+          context = { ...context, state: 'INIT' };
+          break;
+      }
+  }
+  return context;
+});
 
-// const [css] = useCss({
-//   wrapper: [
-//     ['display', 'flex'],
-//     ['flexDirection', 'row'],
-//     ['flexWrap', 'wrap'],
-//     ['justifyContent', 'center'],
-//     ['alignItems', 'center'],
-//   ],
-//   letter: [['margin', '10px']],
-//   bar_wrapper: [
-//     ['backgroundColor', palette('white', 0, 0.01)],
-//     ['marginLeft', '5px'],
-//     ['borderRadius', '7px'],
-//     ['display', 'flex'],
-//     ['flexDirection', 'column'],
-//     ['alignItems', 'center'],
-//     ['justifyContent', 'center'],
-//     ['height', '100%'],
-//     ['width', '5px'],
-//   ],
-//   bar: [
-//     ['backgroundColor', palette('purple')],
-//     ['borderRadius', '7px'],
-//     ['width', '100%'],
-//     ['transition', 'all 0.50s'],
-//     ['height', '0%'],
-//     ['position', 'relative'],
-//   ],
-// });
+export const DesignSystem = () => {
+  const $ = Html({
+    color: Color,
+    attr: Attr,
+    if: If,
+    on_click: OnClick,
+    machine_sub: OnMachine<Context, Messages>(machine),
+    machine_sub_text: OnMachineInnerText<Context, Messages>(machine),
+    machine_sub_html: OnMachineInnerHtml<Context, Messages>(machine),
+    machine_sub_attr: OnMachineAttr<Context, Messages>(machine),
+    machine_sub_class: OnMachineClass<Context, Messages>(machine),
+    on_input: OnTextInput,
+    font_size: FontSize,
+  });
+
+  const template = $('div')(
+    $('h1', ['color', 'blue'])('ExampleApp'),
+    $('h2', ['font_size', 24])('subtitle'),
+    $('div', ['machine_sub_text', 'TODO_UPDATE', (ctx) => ctx.todo])('...'),
+    $(
+      'div',
+      ['machine_sub_html', 'TODO_UPDATE', (ctx) => (ctx.todo.length > 2 ? $('div')(ctx.todo + '---') : null)],
+      ['machine_sub_attr', 'TODO_UPDATE', (ctx) => ['data-len', ctx.todo.length]],
+      ['machine_sub_attr', 'TODO_UPDATE', (ctx) => ['data-len2', ctx.todo]],
+      ['machine_sub_class', 'TODO_UPDATE', (ctx) => `one two-${ctx.todo.length}`],
+    )('...html'),
+    $('form')(
+      $('fieldset')(
+        $('legend')('to dos'),
+        $('input', ['on_input', (val) => machine.pub('TODO_UPDATE', { todo: val })])(),
+        $('button', ['on_click', () => machine.pub('SUBMIT')])('Submit'),
+      ),
+    ),
+  );
+
+  return template;
+};
 
 // const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-
-// export const DesignSystem = () =>
-//   html('div', ['class', css('wrapper')])(
-//     ...letters.split('').map((letter) => html('div', ['class', css('letter')])(letter)),
-//   );

@@ -19,16 +19,9 @@ export const Html =
   (...children: (HTMLElement | string | number | SVGElement)[]) => {
     // Create element
     const el = document.createElementNS('http://www.w3.org/1999/xhtml', tag);
-    let render = true;
 
     // Run features
-    attrs.forEach(([attr, ...args]) => {
-      const feature = features[attr](el, ...args);
-      // if the feature func returns a false, don't render
-      if (feature === false) render = false;
-    });
-
-    if (!render) return null;
+    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
 
     // Append children
     children.forEach((child) => {
@@ -42,8 +35,11 @@ export const Html =
 // Features
 
 export const Attr = (el: HTMLElement, prop: string, val: string) => el.setAttribute(prop, String(val));
-export const If = (_: any, condition: boolean) => condition;
+
+export const ClassList = (el: HTMLElement, classes: string) => (el.className = classes);
+
 export const Color = (el: HTMLElement, color: keyof typeof Colors) => (el.style.color = ColorFunc(color));
+
 export const OnClick = (el: HTMLElement, cb: () => void) =>
   el.addEventListener('click', (e) => (e.preventDefault(), cb()));
 
@@ -86,4 +82,4 @@ export const OnMachineInnerHtml =
 export const OnTextInput = (el: HTMLInputElement, cb: (val: string) => void) =>
   el.addEventListener('input', () => cb(el.value));
 
-export const FontSize = (el: HTMLElement, size: number) => (el.style.fontSize = `${size}px`);
+export const Style = (el: HTMLElement, style: string) => el.setAttribute('style', style);

@@ -2,13 +2,13 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@lib/*": ["./src/app/lib/*"],
-      "@framework/*": ["./src/app/framework/*"],
-      "@elements/*":["./src/app/components/*"],
       "@components/*":["./src/app/features/*"],
+      "@core/*":["src/core/*"],
+      "@features/*": ["./src/app/features/*"],
+      "@framework/*": ["./src/app/framework/*"],
+      "@lib/*": ["./src/app/lib/*"],
       "@pages/*":["./src/app/pages/*"],
       "@services/*":["./src/services/*"],
-      "@domain/*":["./src/domain/*"],
     },
     "esModuleInterop": true,
     "moduleResolution": "node",
