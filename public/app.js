@@ -100,31 +100,6 @@
     return getter;
   };
 
-  // src/app/framework/fsm.ts
-  var FSM = (context, machine) => {
-    let _context = context;
-    const _subs = [];
-    const sub = (action, cb) => {
-      _subs.push({
-        action,
-        cb
-      });
-    };
-    const get = (key) => {
-      return _context[key];
-    };
-    const pub = (action, contextUpdate) => {
-      _context = machine({action, payload: contextUpdate}, _context);
-      _subs.filter((sub2) => sub2["action"] === action).forEach((i) => i.cb(_context));
-      return _context;
-    };
-    return {
-      get,
-      pub,
-      sub
-    };
-  };
-
   // src/app/framework/html.ts
   var Html = (features) => (tag, ...attrs) => (...children) => {
     const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
@@ -140,7 +115,7 @@
   var ClassList = (el, classes) => el.className = classes;
   var Style = (el, style) => el.setAttribute("style", style);
 
-  // src/app/components/Spectral.ts
+  // src/app/components/Spectralizer/Bar.ts
   var css = CSS({
     wrapper: [
       ["display", "flex"],
@@ -159,31 +134,29 @@
       ["alignItems", "center"],
       ["justifyContent", "center"],
       ["height", "100%"],
-      ["width", "12px"],
+      ["width", "9px"],
       ["position", "relative"]
     ],
     bar: [
       ["backgroundColor", Color("purple")],
-      ["borderRadius", "7px"],
+      ["borderRadius", "3px"],
       ["width", "100%"],
       ["transition", "all 0.50s"],
       ["height", "0%"],
       ["position", "absolute"]
     ]
   });
-  var $ = Html({
+  var html = Html({
     css: ClassList,
     style: Style
   });
-  var SpectralBar = (bar) => {
+  var Bar = (bar) => {
     const [h1, o1, h2, o2, h3, o3] = bar;
-    const t = $("div", ["css", css("wrapper")])($("div", ["css", css("bar_bg")])($("div", ["css", css("bar")], ["style", `height:${h1}%;top:${o1}%`])(), $("div", ["css", css("bar")], ["style", `height:${h2}%;top:${o2}%`])(), $("div", ["css", css("bar")], ["style", `height:${h3}%;top:${o3}%`])()));
+    const t = html("div", ["css", css("wrapper")])(html("div", ["css", css("bar_bg")])(html("div", ["css", css("bar")], ["style", `height:${h1}%;top:${o1}%`])(), html("div", ["css", css("bar")], ["style", `height:${h2}%;top:${o2}%`])(), html("div", ["css", css("bar")], ["style", `height:${h3}%;top:${o3}%`])()));
     return t;
   };
-  var Spectrum = (char) => {
-    const t = $("div", ["css", css("wrapper")])(SpectralBar(CHAR[char][0]), SpectralBar(CHAR[char][1]), SpectralBar(CHAR[char][2]));
-    return t;
-  };
+
+  // src/core/data/Letters.ts
   var CHAR = {
     0: [
       [100, 0, 0, 0, 0, 0],
@@ -256,126 +229,158 @@
       [100, 0, 0, 0, 0, 0]
     ],
     E: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [20, 0, 20, 80, 20, 40]
     ],
     F: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 0, 0, 20, 40],
+      [20, 0, 0, 0, 20, 40]
     ],
     G: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [20, 0, 60, 40, 0, 0]
     ],
     H: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 40, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
     ],
     I: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [20, 0, 0, 0, 20, 80],
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 0, 0, 20, 80]
     ],
     J: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [20, 0, 50, 50, 0, 0],
+      [20, 0, 20, 80, 0, 0],
+      [0, 0, 0, 0, 100, 0]
     ],
     K: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 40, 0, 0, 0, 0],
+      [40, 0, 40, 60, 0, 0]
     ],
     L: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 80, 0, 0, 0, 0],
+      [20, 80, 0, 0, 0, 0]
     ],
     M: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
     ],
     N: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [60, 20, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
     ],
     O: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 80, 0, 0],
+      [0, 0, 100, 0, 0, 0]
     ],
     P: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 40, 0, 0],
+      [60, 0, 0, 0, 0, 0]
     ],
     Q: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [80, 0, 0, 0, 0, 0],
+      [20, 0, 40, 60, 0, 0],
+      [80, 0, 0, 0, 0, 0]
     ],
     R: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 20, 40, 0, 0],
+      [60, 0, 30, 70, 0, 0]
     ],
     S: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [60, 0, 20, 80, 0, 0],
+      [20, 0, 20, 80, 20, 40],
+      [20, 0, 60, 40, 0, 0]
     ],
     T: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [20, 0, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0],
+      [20, 0, 0, 0, 0, 0]
     ],
     U: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [20, 80, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
     ],
     V: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [80, 0, 0, 0, 0, 0],
+      [30, 70, 0, 0, 0, 0],
+      [80, 0, 0, 0, 0, 0]
     ],
     W: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [100, 0, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0],
+      [100, 0, 0, 0, 0, 0]
     ],
     X: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [40, 0, 40, 60, 0, 0],
+      [40, 30, 0, 0, 0, 0],
+      [40, 0, 40, 60, 0, 0]
     ],
     Y: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [50, 0, 0, 0, 0, 0],
+      [60, 40, 0, 0, 0, 0],
+      [50, 0, 0, 0, 0, 0]
     ],
     Z: [
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0]
+      [20, 0, 40, 60, 0, 0],
+      [20, 0, 20, 80, 40, 30],
+      [40, 0, 20, 80, 0, 0]
+    ],
+    "%": [
+      [20, 0, 40, 60, 0, 0],
+      [40, 30, 0, 0, 0, 0],
+      [40, 0, 20, 80, 0, 0]
     ]
   };
 
-  // src/app/pages/DesignSystem.ts
+  // src/app/components/Spectralizer/Character.ts
   var css2 = CSS({
-    container: [
+    wrapper: [
+      ["display", "flex"],
+      ["flexDirection", "row"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"],
+      ["height", "100%"],
+      ["cursor", "pointer"]
+    ]
+  });
+  var html2 = Html({
+    css: ClassList,
+    style: Style
+  });
+  var Character = (char) => {
+    const t = html2("div", ["css", css2("wrapper")])(Bar(CHAR[char][0]), Bar(CHAR[char][1]), Bar(CHAR[char][2]));
+    return t;
+  };
+  var CharacterList = Object.entries(CHAR).map(([k]) => Character(k));
+
+  // src/app/pages/DesignSystem.ts
+  var css3 = CSS({
+    container: [["backgroundColor", Color("black")]],
+    jumbotron_container: [
+      ["gridColumn", "1/-1"],
+      ["display", "flex"],
+      ["alignItems", "center"],
+      ["justifyContent", "center"]
+    ],
+    letter_container: [
       ["display", "grid"],
       ["height", "100vh"],
       ["width", "100vw"],
       ["gridTemplateColumns", "repeat(5, 1fr)"],
       ["gridTemplateRows", "auto"],
-      ["backgroundColor", Color("black")],
       ["gridGap", "10px"],
       ["padding", "10px"],
       ["boxSizing", "border-box"],
@@ -383,25 +388,17 @@
     ],
     letter: [
       ["display", "flex"],
-      ["border", "1px solid white"],
+      ["border", `1px solid ${Color("white", 0, 0.1)}`],
       ["alignItems", "center"],
       ["justifyContent", "center"],
       ["padding", "10px"]
     ]
   });
+  var html3 = Html({
+    css: ClassList
+  });
   var DesignSystem = () => {
-    const fsm = FSM({state: "INIT"}, (message, context) => {
-      switch (context.state) {
-        case "INIT":
-          switch (message.action) {
-          }
-      }
-      return context;
-    });
-    const $2 = Html({
-      css: ClassList
-    });
-    const template = $2("div", ["css", css2("container")])(...Object.entries(CHAR).map(([k]) => $2("div", ["css", css2("letter")])(Spectrum(k))));
+    const template = html3("div", ["css", css3("container")])(html3("div", ["css", css3("letter_container")])(html3("div", ["css", css3("jumbotron_container")])(Character("J"), Bar([20, 40, 0, 0, 0, 0]), Character("U"), Bar([20, 40, 0, 0, 0, 0]), Character("M"), Bar([20, 40, 0, 0, 0, 0]), Character("B"), Bar([20, 40, 0, 0, 0, 0]), Character("O"), Bar([20, 40, 0, 0, 0, 0]), Character("T"), Bar([20, 40, 0, 0, 0, 0]), Character("R"), Bar([20, 40, 0, 0, 0, 0]), Character("O"), Bar([20, 40, 0, 0, 0, 0]), Character("N")), ...CharacterList.map((character) => html3("div", ["css", css3("letter")])(character))));
     return template;
   };
 
