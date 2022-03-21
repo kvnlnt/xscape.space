@@ -1,3 +1,4 @@
+import { CHAR } from '@core/data/Letters';
 import { Color } from '@framework/colors';
 import { CSS } from '@framework/css';
 import { ClassList, Html } from '@framework/html';
@@ -37,12 +38,17 @@ const html = Html({
 });
 
 export const DesignSystem = () => {
+  const { DisplayMachine, DisplayTemplate } = Display();
   const template = html('div', ['css', css('container')])(
     html('div', ['css', css('letter_container')])(
-      html('div', ['css', css('jumbotron_container')])(Display({ numOfBars: 20, readings: [] })),
+      html('div', ['css', css('jumbotron_container')])(DisplayTemplate),
       ...CharacterList.map((character) => html('div', ['css', css('letter')])(character)),
     ),
   );
+
+  setTimeout(() => {
+    DisplayMachine.pub('UPDATE', { bars: [...CHAR['A'], [0, 0, 0, 0, 0, 0], ...CHAR['B']] });
+  }, 1000);
 
   return template;
 };

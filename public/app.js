@@ -18,103 +18,6 @@
     return [setHtml, setAttrs];
   }
 
-  // src/app/framework/colors.ts
-  var Colors = {
-    black: [0, 0, 5],
-    brown: [44, 11, 14],
-    red: [0, 100, 50],
-    blue: [240, 100, 50],
-    yellow: [55, 100, 50],
-    green: [118, 100, 50],
-    purple: [270, 100, 50],
-    orange: [30, 100, 50],
-    transparent: "transparent",
-    white: [0, 0, 100]
-  };
-  var Color = (color, adjustLightness = 0, opacity = 1) => {
-    if (color === "transparent")
-      return color;
-    const [h, s, l] = Colors[color];
-    const hsla = `hsla(${h}deg,${s}%,${l + adjustLightness}%,${opacity})`;
-    return hsla;
-  };
-
-  // src/app/framework/css.ts
-  var Breakpoints;
-  (function(Breakpoints2) {
-    Breakpoints2[Breakpoints2["MOBILE"] = 0] = "MOBILE";
-    Breakpoints2[Breakpoints2["TABLET"] = 720] = "TABLET";
-    Breakpoints2[Breakpoints2["DESKTOP"] = 1200] = "DESKTOP";
-  })(Breakpoints || (Breakpoints = {}));
-  function uuid(str = "xxxxxxxx") {
-    function getRandomSymbol(symbol) {
-      let array;
-      if (symbol === "y") {
-        array = ["8", "9", "a", "b"];
-        return array[Math.floor(Math.random() * array.length)];
-      }
-      array = new Uint8Array(1);
-      window.crypto.getRandomValues(array);
-      return (array[0] % 16).toString(16);
-    }
-    return str.replace(/[xy]/g, getRandomSymbol);
-  }
-  var CSS = (declarations) => {
-    const id = uuid();
-    const style = document.createElement("style");
-    style.id = id;
-    document.getElementsByTagName("head")[0].appendChild(style);
-    const render = () => {
-      style.innerHTML = "";
-      const styles = [];
-      const addStyle = (breakpoint = 0) => {
-        styles.push(`@media screen and (min-width:${breakpoint}px) {
-`);
-        const suffix = {
-          [0]: "",
-          [720]: "_on_tablet",
-          [1200]: "_on_desktop"
-        };
-        Object.entries(declarations).forEach(([selector, declarations2]) => {
-          styles.push(`.${selector}${suffix[breakpoint]}_${id} {`);
-          declarations2.forEach(([prop, val, render2 = true]) => render2 ? styles.push(`${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}:${val};`) : null);
-          styles.push(`}
-`);
-          styles.push(`.${selector}_on_hover${suffix[breakpoint]}_${id}:hover {`);
-          declarations2.forEach(([prop, val, render2 = true]) => render2 ? styles.push(`${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}:${val};`) : null);
-          styles.push(`}
-`);
-        });
-        styles.push(`}
-`);
-      };
-      addStyle(0);
-      addStyle(720);
-      addStyle(1200);
-      style.innerHTML = styles.join("");
-    };
-    render();
-    const getter = (...list) => {
-      return list.filter((i) => i !== null).map((item) => `${item}_${id}`).join(" ");
-    };
-    return getter;
-  };
-
-  // src/app/framework/html.ts
-  var Html = (features) => (tag, ...attrs) => (...children) => {
-    const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
-    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
-    children.forEach((child) => {
-      if (child instanceof Node)
-        el.appendChild(child);
-      if (typeof child === "string" || typeof child === "number")
-        el.innerHTML += child;
-    });
-    return el;
-  };
-  var ClassList = (el, classes) => el.className = classes;
-  var Style = (el, style) => el.setAttribute("style", style);
-
   // src/core/data/Letters.ts
   var CHAR = {
     0: [
@@ -304,6 +207,109 @@
     ]
   };
 
+  // src/app/framework/colors.ts
+  var Colors = {
+    black: [0, 0, 5],
+    brown: [44, 11, 14],
+    red: [0, 100, 50],
+    blue: [240, 100, 50],
+    yellow: [55, 100, 50],
+    green: [118, 100, 50],
+    purple: [270, 100, 50],
+    orange: [30, 100, 50],
+    transparent: "transparent",
+    white: [0, 0, 100]
+  };
+  var Color = (color, adjustLightness = 0, opacity = 1) => {
+    if (color === "transparent")
+      return color;
+    const [h, s, l] = Colors[color];
+    const hsla = `hsla(${h}deg,${s}%,${l + adjustLightness}%,${opacity})`;
+    return hsla;
+  };
+
+  // src/app/framework/css.ts
+  var Breakpoints;
+  (function(Breakpoints2) {
+    Breakpoints2[Breakpoints2["MOBILE"] = 0] = "MOBILE";
+    Breakpoints2[Breakpoints2["TABLET"] = 720] = "TABLET";
+    Breakpoints2[Breakpoints2["DESKTOP"] = 1200] = "DESKTOP";
+  })(Breakpoints || (Breakpoints = {}));
+  function uuid(str = "xxxxxxxx") {
+    function getRandomSymbol(symbol) {
+      let array;
+      if (symbol === "y") {
+        array = ["8", "9", "a", "b"];
+        return array[Math.floor(Math.random() * array.length)];
+      }
+      array = new Uint8Array(1);
+      window.crypto.getRandomValues(array);
+      return (array[0] % 16).toString(16);
+    }
+    return str.replace(/[xy]/g, getRandomSymbol);
+  }
+  var CSS = (declarations) => {
+    const id = uuid();
+    const style = document.createElement("style");
+    style.id = id;
+    document.getElementsByTagName("head")[0].appendChild(style);
+    const render = () => {
+      style.innerHTML = "";
+      const styles = [];
+      const addStyle = (breakpoint = 0) => {
+        styles.push(`@media screen and (min-width:${breakpoint}px) {
+`);
+        const suffix = {
+          [0]: "",
+          [720]: "_on_tablet",
+          [1200]: "_on_desktop"
+        };
+        Object.entries(declarations).forEach(([selector, declarations2]) => {
+          styles.push(`.${selector}${suffix[breakpoint]}_${id} {`);
+          declarations2.forEach(([prop, val, render2 = true]) => render2 ? styles.push(`${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}:${val};`) : null);
+          styles.push(`}
+`);
+          styles.push(`.${selector}_on_hover${suffix[breakpoint]}_${id}:hover {`);
+          declarations2.forEach(([prop, val, render2 = true]) => render2 ? styles.push(`${prop.replace(/([A-Z])/g, "-$1").toLowerCase()}:${val};`) : null);
+          styles.push(`}
+`);
+        });
+        styles.push(`}
+`);
+      };
+      addStyle(0);
+      addStyle(720);
+      addStyle(1200);
+      style.innerHTML = styles.join("");
+    };
+    render();
+    const getter = (...list) => {
+      return list.filter((i) => i !== null).map((item) => `${item}_${id}`).join(" ");
+    };
+    return getter;
+  };
+
+  // src/app/framework/html.ts
+  var Html = (features) => (tag, ...attrs) => (...children) => {
+    const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag);
+    attrs.forEach(([attr, ...args]) => features[attr](el, ...args));
+    children.forEach((child) => {
+      if (child instanceof Node)
+        el.appendChild(child);
+      if (typeof child === "string" || typeof child === "number")
+        el.innerHTML += child;
+    });
+    return el;
+  };
+  var ClassList = (el, classes) => el.className = classes;
+  var OnMachineInnerHtml = (machine) => (el, action, cb) => machine.sub(action, (context) => {
+    el.innerHTML = "";
+    const content = cb(context);
+    if (content)
+      el.appendChild(content);
+  });
+  var Style = (el, style) => el.setAttribute("style", style);
+
   // src/app/components/Spectralizer/Bar.ts
   var css = CSS({
     bar_wrapper: [
@@ -366,6 +372,32 @@
   };
   var CharacterList = Object.entries(CHAR).map(([char]) => Character({char}));
 
+  // src/app/framework/fsm.ts
+  var FSM = (context, machine) => {
+    let _context = context;
+    const _subs = [];
+    const sub = (action, cb) => {
+      _subs.push({
+        action,
+        cb
+      });
+    };
+    const get = (key) => {
+      return _context[key];
+    };
+    const pub = (action, contextUpdate) => {
+      const message = {action, payload: contextUpdate};
+      _context = machine(message, _context);
+      _subs.filter((sub2) => sub2["action"] === action).forEach((i) => i.cb(_context));
+      return _context;
+    };
+    return {
+      get,
+      pub,
+      sub
+    };
+  };
+
   // src/app/components/Spectralizer/Display.ts
   var css3 = CSS({
     display_wrapper: [
@@ -375,16 +407,35 @@
       ["justifyContent", "center"],
       ["height", "100%"],
       ["cursor", "pointer"]
+    ],
+    display_sub_wrapper: [
+      ["display", "flex"],
+      ["height", "100%"]
     ]
+  });
+  var DisplayMachine = FSM({bars: [[0, 0, 0, 0, 0, 0]], state: "LISTENING"}, (message, context) => {
+    switch (context.state) {
+      case "LISTENING":
+        switch (message.action) {
+          case "UPDATE":
+            context = {...context, bars: message.payload.bars};
+            break;
+        }
+    }
+    return context;
   });
   var html3 = Html({
     css: ClassList,
-    style: Style
+    style: Style,
+    sub: OnMachineInnerHtml(DisplayMachine)
   });
-  var Display = ({numOfBars, readings}) => {
-    const emptyBars = Array(numOfBars).fill(0).map(() => Bar([0, 0, 0, 0, 0, 0]));
-    const t = html3("div", ["css", css3("display_wrapper")])(...emptyBars);
-    return t;
+  var Display = () => {
+    const bars = DisplayMachine.get("bars").map((bar) => Bar(bar));
+    const DisplayTemplate = html3("div", ["css", css3("display_wrapper")], ["sub", "UPDATE", (ctx) => html3("div", ["css", css3("display_sub_wrapper")])(...ctx.bars.map((bar) => Bar(bar)))])(...bars);
+    return {
+      DisplayMachine,
+      DisplayTemplate
+    };
   };
 
   // src/app/pages/DesignSystem.ts
@@ -419,7 +470,11 @@
     css: ClassList
   });
   var DesignSystem = () => {
-    const template = html4("div", ["css", css4("container")])(html4("div", ["css", css4("letter_container")])(html4("div", ["css", css4("jumbotron_container")])(Display({numOfBars: 20, readings: []})), ...CharacterList.map((character) => html4("div", ["css", css4("letter")])(character))));
+    const {DisplayMachine: DisplayMachine2, DisplayTemplate} = Display();
+    const template = html4("div", ["css", css4("container")])(html4("div", ["css", css4("letter_container")])(html4("div", ["css", css4("jumbotron_container")])(DisplayTemplate), ...CharacterList.map((character) => html4("div", ["css", css4("letter")])(character))));
+    setTimeout(() => {
+      DisplayMachine2.pub("UPDATE", {bars: [...CHAR["A"], [0, 0, 0, 0, 0, 0], ...CHAR["B"]]});
+    }, 1e3);
     return template;
   };
 
